@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<!--
+  CarbonLog – home page: "The walk".
+
+  Scrolling does not slide the page. It walks a camera forward into a hand-painted solarpunk valley,
+  where people, robots and nature share the land: a morning meadow, solar cottages and wind turbines,
+  a solar tram and an airship, farms with greenhouse domes, a village square with a giant tree and
+  lanterns, and a sunset overlook. Chapter cards appear as you reach each place.
+
+  Rendering: one 2D canvas with a real perspective camera (eye height 1.6 m, near-plane clipping,
+  back-face culling, distance haze, time of day that moves from morning to sunset as you walk).
+  Sound: sound.js (clicks, footsteps while walking, meadow ambience after the first click).
+  Reduced motion: no idle animation and no smoothing; the walk still follows the scroll.
+-->
+<html lang="en" class="js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#cfe8f2">
+  <title>CarbonLog – Know your footprint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400..600&family=Inter+Tight:wght@600;700&family=Michroma&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* Home only. Layout concept: a fixed painted world under the page; the journey section is a long scroll
+       track that drives the camera, chapter cards float over the scene, then the content rises like a hillside. */
+    body.home { background: #cfe8f2; }
+    html.appopen { overflow: hidden; }
+    #world { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+    .grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .09; mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+    main { position: relative; z-index: 2; }
+    .bar { position: fixed; left: 0; top: 0; z-index: 21; height: 3px; width: 100%; background: var(--sun); transform-origin: 0 50%; transform: scaleX(0); }
+
+    /* ---------- prologue: Earth from space ---------- */
+    #space { position: fixed; inset: 0; z-index: 0; background: radial-gradient(ellipse at 62% 45%, #0d2747 0%, #06101f 55%, #02050c 100%); }
+    #space canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #white { position: fixed; inset: 0; z-index: 1; background: #fffcf0; opacity: 0; pointer-events: none; }
+    .prologue { position: relative; height: 1700vh; }
+    /* ---------- opening: dust veil, then Earthrise seen from the Moon (from the SELENE dashboard concept) ---------- */
+    .prologue .pin { --er-display: "Michroma", "Eurostile", "Arial Black", sans-serif; --er-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .er-mono { font: 400 .6875rem/1.3 var(--er-mono); letter-spacing: .16em; text-transform: uppercase; }
+    .er-veil { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 50% at 30% 40%, rgba(170, 184, 210, .55), transparent 70%), radial-gradient(50% 60% at 75% 60%, rgba(120, 140, 180, .5), transparent 70%), radial-gradient(80% 80% at 50% 50%, rgba(20, 26, 40, .85), rgba(5, 7, 12, .95)); }
+    .er-veil-in { position: absolute; inset-inline: 0; top: 50%; transform: translateY(-50%); text-align: center; padding-inline: 16px; }
+    .er-veil-in .k { color: rgba(201, 204, 211, .8); }
+    .er-veil-in .s { margin: 12px -.5em 0 0; font: 400 .8125rem/1.4 var(--er-display); letter-spacing: .5em; color: rgba(255, 255, 255, .9); text-transform: uppercase; }
+    .er-bounce { display: inline-block; margin-top: 24px; color: rgba(201, 204, 211, .7); animation: er-bounce 1s infinite; }
+    @keyframes er-bounce { 0%, 100% { transform: translateY(-25%); } 50% { transform: none; } }
+    .er-dust { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .er-title { position: absolute; inset-inline: 0; top: 26%; text-align: center; opacity: 0; pointer-events: none; padding-inline: 16px; }
+    @media (min-width: 768px) { .er-title { top: 30%; } }
+    .er-title h2 { font: 400 clamp(2rem, 8.2vw, 8.6rem)/1 var(--er-display); letter-spacing: .24em; margin-right: -.24em; color: #fff; text-shadow: 0 4px 40px rgba(0, 0, 0, .5); text-wrap: nowrap; }
+    .er-title p { margin-top: 16px; color: rgba(201, 204, 211, .8); }
+    .er-hud { position: absolute; inset: 16px; pointer-events: none; opacity: 0; font: 400 .625rem/1.3 var(--er-mono); letter-spacing: .14em; text-transform: uppercase; color: rgba(201, 204, 211, .75); }
+    @media (min-width: 640px) { .er-hud { inset: 24px; } }
+    @media (min-width: 768px) { .er-hud { font-size: .6875rem; } }
+    .er-hud .br { position: absolute; inset: 0; color: rgba(201, 204, 211, .4);
+      background: linear-gradient(currentColor, currentColor) top left / 14px 1px, linear-gradient(currentColor, currentColor) top left / 1px 14px, linear-gradient(currentColor, currentColor) top right / 14px 1px, linear-gradient(currentColor, currentColor) top right / 1px 14px,
+        linear-gradient(currentColor, currentColor) bottom left / 14px 1px, linear-gradient(currentColor, currentColor) bottom left / 1px 14px, linear-gradient(currentColor, currentColor) bottom right / 14px 1px, linear-gradient(currentColor, currentColor) bottom right / 1px 14px; background-repeat: no-repeat; }
+    .er-hud .tl, .er-hud .tr { position: absolute; top: calc(70px + env(safe-area-inset-top, 0px)); display: grid; gap: 4px; }
+    .er-hud .tl { left: 12px; } .er-hud .tr { right: 12px; text-align: right; }
+    .er-hud .dim { color: rgba(201, 204, 211, .5); }
+    .er-hud .hot { color: #ffb27a; font-variant-numeric: tabular-nums; }
+    .er-hud .ev { color: #6fb6ff; }
+    .er-hud .bl { position: absolute; left: 12px; bottom: 12px; }
+    @media (max-width: 520px) { .er-hud .bl { display: none; } }
+    .er-hud .brr { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; align-items: center; }
+    @media (min-width: 768px) { .er-hud .tl, .er-hud .tr { top: calc(84px + env(safe-area-inset-top, 0px)); } .er-hud .tl { left: 16px; } .er-hud .tr { right: 16px; } .er-hud .bl { left: 16px; bottom: 16px; } .er-hud .brr { right: 16px; bottom: 16px; } }
+    .er-sub { position: absolute; left: 50%; bottom: 13vh; width: min(40rem, calc(100% - 32px)); transform: translateX(-50%); text-align: center; opacity: 0; pointer-events: none; font: 500 clamp(.72rem, 1.3vw, .9rem)/1.6 var(--er-mono); letter-spacing: .16em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, .9); }
+    .er-sub b { color: #ffb27a; font-weight: 500; }
+    .er-lbl { position: absolute; left: max(16px, 5vw); bottom: 12vh; opacity: 0; pointer-events: none; color: #fff; }
+    .er-lbl p:first-child { font: 400 clamp(1.1rem, 2.4vw, 1.9rem)/1.1 var(--er-display); letter-spacing: .22em; }
+    .er-lbl p + p { margin-top: 10px; color: rgba(201, 214, 235, .78); }
+    .prologue .cue { display: none; }
+    @media (prefers-reduced-motion: reduce) { .er-bounce { animation: none; } }
+    #post { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: none; }
+    .post-on #post { display: block; }
+    .post-on #world { visibility: hidden; }
+    .nova-logo { position: absolute; left: 50%; top: 50%; text-align: center; pointer-events: none; opacity: 0; visibility: hidden;
+      transform: translate(-50%, -50%) perspective(900px) rotateX(var(--rx, 0deg)) scale(var(--s, 1)); filter: blur(var(--b, 0px)) drop-shadow(0 2px 22px rgba(0, 0, 0, .6)); }
+    /* the name: a geometric monoline wordmark (circles, straight stems, flat ends) drawn as SVG */
+    .nl-word { position: relative; }
+    .cp-word { display: block; width: min(80vw, 860px); max-width: 100%; height: auto; margin: 0 auto; color: #fff; overflow: visible; }
+    .nl-pulse { display: block; width: min(56vw, 460px); height: auto; margin: .9rem auto 0; overflow: visible; }
+    .nl-pulse path { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: beat 2.2s linear infinite; }
+    @keyframes beat { 0% { stroke-dashoffset: 1; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
+    .nl-sub { margin-top: 1.2rem; font: 500 clamp(.72rem, 1.3vw, .95rem)/1 var(--mono); letter-spacing: .5em; margin-right: -.5em; text-transform: uppercase; color: rgba(225, 230, 238, .75); }
+    .nl-sub b { color: #fff; font-weight: 500; }
+    @media (max-width: 600px) { .nl-sub { letter-spacing: .3em; margin-right: -.3em; white-space: nowrap; } }
+    @media (prefers-reduced-motion: reduce) { .nl-pulse path { animation: none; stroke-dashoffset: 0; } }
+    .ecard { --o: 0; position: absolute; left: max(16px, 5vw); top: 50%; width: min(26rem, calc(100% - 32px)); padding: 26px; border-radius: 24px; background: linear-gradient(135deg, rgba(14, 26, 44, .58), rgba(6, 12, 24, .34)); border: 1px solid rgba(255, 255, 255, .22); color: #eef6ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 30px rgba(255, 255, 255, .05), 0 30px 80px rgba(0, 0, 0, .35); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%);
+      opacity: var(--o); visibility: hidden; transform: translateY(calc(-50% + (1 - var(--o)) * 40px)); }
+    .ecard.center.hot { top: auto; bottom: 7vh; transform: translate(-50%, calc((1 - var(--o)) * 40px)); }
+    .ecard.center { left: 50%; text-align: center; transform: translate(-50%, calc(-50% + (1 - var(--o)) * 40px)); background: linear-gradient(135deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .06)); }
+    .ecard .ek { display: inline-flex; align-items: center; gap: 8px; font: 500 .76rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: #86efac; margin-bottom: 14px; }
+    .ecard .ek.warn { color: #ffb27a; }
+    .ecard .ek.warn::before { content: "!"; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: #ff7a45; color: #1b0a02; font: 800 .8rem/1 var(--display); letter-spacing: 0; }
+    .ecard h2 { font-size: clamp(1.9rem, 3.4vw, 2.7rem); color: #fff; margin-bottom: 12px; }
+    .ecard p { color: rgba(238, 246, 255, .82); }
+    .stat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .16); }
+    .stat b { font: 800 clamp(2.2rem, 4vw, 3rem)/1 var(--display); letter-spacing: -.04em; color: #fff; font-variant-numeric: tabular-nums; }
+    .stat.hot b { color: #ff9a62; }
+    .stat span { flex: 1 1 12rem; font-size: .95rem; }
+    .src { margin-top: 12px; font: 500 .74rem/1.5 var(--mono); color: rgba(238, 246, 255, .6) !important; }
+    .src a { color: #bfe3ff; }
+    canvas.glacier { display: block; width: 100%; height: 120px; border-radius: 14px; margin: 4px 0 14px; }
+    .prologue .cue { border-color: rgba(255, 255, 255, .7); background: rgba(255, 255, 255, .08); bottom: 92px; }
+    #space { background: #000; }
+    .co2-hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+    .co2-title { position: absolute; left: max(16px, 5vw); top: calc(92px + env(safe-area-inset-top, 0px)); font: 600 clamp(1.5rem, 2.6vw, 2.2rem)/1.1 var(--body); color: #ff7a2f; }
+    .months { position: absolute; left: 50%; bottom: 34px; width: min(620px, 80vw); transform: translateX(-50%); }
+    .months .track { height: 3px; background: rgba(255, 255, 255, .35); border-radius: 2px; overflow: hidden; }
+    .months .track i { display: block; height: 100%; background: #fff; transform-origin: 0 50%; transform: scaleX(0); }
+    .months .ticks { display: flex; justify-content: space-between; margin-top: 8px; font: 500 .74rem/1 var(--body); color: rgba(255, 255, 255, .55); }
+    .heatwave { position: relative; height: 480vh; }
+    .heatwave .ecard { background: rgba(40, 14, 4, .55); border-color: rgba(255, 190, 140, .25); }
+    .thermo { position: absolute; right: max(56px, 6vw); top: 50%; transform: translateY(-50%); display: flex; align-items: flex-end; gap: 14px; opacity: 0; }
+    .th-tube { position: relative; width: 20px; height: 44vh; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .9); background: rgba(255, 255, 255, .25); overflow: hidden; box-shadow: 0 10px 30px rgba(120, 30, 0, .3); }
+    .th-tube::after { content: ""; position: absolute; left: -2px; right: -2px; bottom: -2px; height: 20px; border-radius: 50%; background: #e4322b; }
+    .th-tube i { position: absolute; left: 3px; right: 3px; bottom: 3px; top: 3px; border-radius: 8px; background: linear-gradient(0deg, #e4322b, #ff8a3d 60%, #ffd36b); transform-origin: 50% 100%; transform: scaleY(.4); }
+    .th-read { display: flex; flex-direction: column; color: #fff; text-shadow: 0 2px 16px rgba(120, 30, 0, .55); }
+    .th-read b { font: 800 clamp(2.6rem, 5vw, 4rem)/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .th-read span { font: 500 1rem/1.4 var(--mono); }
+    .th-read small { font: 500 .7rem/1.4 var(--mono); opacity: .8; letter-spacing: .1em; text-transform: uppercase; }
+    @media (max-width: 700px) {
+      .months { display: none; }
+      .co2-title { font-size: 1.3rem; }
+      .thermo { top: calc(84px + env(safe-area-inset-top, 0px)); transform: none; right: 16px; gap: 10px; }
+      .th-tube { height: 22vh; width: 16px; }
+      .th-read b { font-size: 2.2rem; }
+    }
+    .prologue .cue span { background: #fff; }
+    @media (min-width: 901px) {
+      .site-nav.clear .nav-menu a:not(.btn) { color: #eaf4ff; }
+      .site-nav.clear .logo b { color: #86efac; }
+      .site-nav.clear .btn.primary { background: #fff; border-color: #fff; color: #15361f; }
+    }
+    .site-nav.clear .sound-btn, .site-nav.clear .menu-btn { color: #fff; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+    .site-nav.clear .menu-btn i { background: #fff; }
+    .site-nav.clear { background: linear-gradient(135deg, rgba(14, 28, 22, .46), rgba(14, 28, 22, .2)); border-color: rgba(255, 255, 255, .26); }
+    .site-nav.clear .logo { color: #fff; }
+    .site-nav.clear .logo::before { background: #fff; }
+    .site-nav.clear .logo { text-shadow: 0 1px 12px rgba(0, 0, 0, .35); }
+    @media (max-width: 700px) {
+      .ecard, .ecard.center, .ecard.center.hot { top: auto; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; width: auto; padding: 22px; transform: translateY(calc((1 - var(--o)) * 40px)); }
+      .ecard h2 { font-size: 1.7rem; }
+    }
+
+    /* ---------- the walk ---------- */
+    .journey { position: relative; height: 1150vh; }
+    .pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+    .intro { position: absolute; left: 0; right: 0; top: calc(104px + env(safe-area-inset-top, 0px)); }
+    .js .intro { opacity: 0; }
+    .intro h1 { font-size: clamp(3rem, 8.6vw, 7.6rem); line-height: .9; perspective: 900px; color: var(--ink); text-shadow: 0 2px 40px rgba(255, 255, 255, .7); }
+    .intro h1 .w { display: inline-block; margin-right: .2em; transform-origin: 50% 100%; }
+    .intro-sub { margin-top: 22px; max-width: 31rem; display: flex; flex-direction: column; gap: 20px; }
+    .intro-sub .lede { color: var(--ink); text-shadow: 0 1px 20px rgba(255, 255, 255, .9); }
+    .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    .chap { --o: 0; position: absolute; top: 50%; width: min(27rem, calc(100% - 32px)); padding: 28px; border-radius: 26px; background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(244, 252, 240, .5)); border: 1px solid rgba(255, 255, 255, .85); box-shadow: inset 0 1px 0 #fff, inset 0 0 26px rgba(255, 255, 255, .35), 0 30px 80px rgba(21, 54, 31, .22); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+      opacity: var(--o); visibility: hidden; transform: translateY(calc(-50% + (1 - var(--o)) * 46px)) scale(calc(.94 + var(--o) * .06)); }
+    .chap.left { left: max(16px, 5vw); }
+    .chap.right { right: max(64px, 7vw); }
+    .chap.final { width: min(30rem, calc(100% - 32px)); }
+    .chap.final h2 { font-size: clamp(2.2rem, 4vw, 3.2rem); }
+    .chap .label { display: inline-flex; align-items: center; gap: 10px; font: 500 .76rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    .chap .label i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--sun); color: var(--ink); font: 800 .8rem/1 var(--display); font-style: normal; letter-spacing: 0; }
+    .chap h2 { font-size: clamp(2rem, 3.6vw, 2.9rem); margin-bottom: 12px; }
+    .chap p { color: var(--muted); }
+    .chap .lede { margin: 0 0 22px; }
+    .chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 18px; padding: 9px 14px; border-radius: 14px; background: #eaf6e3; border: 1px solid rgba(42, 127, 62, .25); font: 500 .86rem/1.3 var(--mono); color: var(--ink) !important; }
+    .chip i { font-style: normal; color: var(--soft); }
+    .chap .fine { margin-top: 14px; }
+
+    .rail { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; opacity: 0; }
+    .rail button { display: flex; align-items: center; justify-content: flex-end; gap: 10px; background: none; border: 0; padding: 4px; cursor: pointer; color: var(--ink); font: 500 .7rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .rail button span { opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s; background: rgba(250, 255, 247, .9); padding: 5px 8px; border-radius: 8px; }
+    .rail button:hover span, .rail button:focus-visible span, .rail button[aria-current="step"] span { opacity: 1; transform: none; }
+    .rail button i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: rgba(255, 255, 255, .7); transition: transform .2s, background .2s; }
+    .rail button[aria-current="step"] i { background: var(--sun); transform: scale(1.35); }
+    .cue { position: absolute; left: 50%; bottom: 30px; width: 26px; height: 42px; margin-left: -13px; border: 2px solid rgba(21, 54, 31, .7); border-radius: 14px; opacity: 0; background: rgba(255, 255, 255, .35); }
+    .cue span { position: absolute; left: 50%; top: 8px; width: 4px; height: 8px; margin-left: -2px; border-radius: 2px; background: var(--ink); animation: cue 1.6s ease-in-out infinite; }
+    @keyframes cue { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(12px); opacity: 0; } 100% { opacity: 0; } }
+    @media (max-width: 700px) {
+      .chap, .chap.left, .chap.right { top: auto; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; width: auto; padding: 22px; transform: translateY(calc((1 - var(--o)) * 40px)); }
+      .chap h2 { font-size: 1.8rem; }
+      .rail { top: calc(96px + env(safe-area-inset-top, 0px)); transform: none; gap: 8px; }
+      .rail button span { display: none; }
+    }
+
+    /* ---------- after the walk: the page rises like a hillside ---------- */
+    .after { position: relative; background: var(--bg); }
+    .after::before { content: ""; position: absolute; left: 0; right: 0; top: -119px; height: 120px; pointer-events: none;
+      background: no-repeat bottom / 100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0 70 C120 40 220 30 330 52 S520 100 650 72 S880 18 1010 40 S1150 76 1200 60 V120 H0Z' fill='%23eef6ea'/%3E%3Cpath d='M60 74 l6 -16 l4 15 M300 52 l5 -14 l4 14 M690 70 l6 -18 l3 17 M960 44 l5 -15 l5 14 M1130 66 l4 -13 l4 12' stroke='%23eef6ea' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
+    .block { padding-block: clamp(70px, 12vh, 140px); }
+    .block h2 { max-width: 15ch; margin-bottom: clamp(32px, 6vh, 56px); }
+    .steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 28px; }
+    .steps li { display: flex; flex-direction: column; gap: 12px; padding-top: 22px; border-top: 2px solid var(--line-2); min-width: 0; }
+    .steps .n { font: 800 4.5rem/.9 var(--display); letter-spacing: -.05em; color: var(--accent); }
+    .steps p { color: var(--muted); }
+    .mock { position: relative; margin-top: auto; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow); font: 500 .9rem/1.4 var(--mono); }
+    .mock .ex { position: absolute; right: 12px; top: -10px; padding: 2px 9px; border-radius: 99px; background: var(--ink); color: #fff; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; }
+    .mrow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+    .mrow em { font-style: normal; color: var(--accent); }
+    .bars { display: flex; align-items: flex-end; gap: 8px; height: 112px; }
+    .bars i { flex: 1; height: var(--h); border-radius: 6px 6px 2px 2px; background: var(--accent); opacity: .8; }
+    .bars i:nth-child(3) { opacity: 1; background: var(--sun); }
+    .meter { height: 12px; border-radius: 99px; background: rgba(21, 54, 31, .1); overflow: hidden; }
+    .meter i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+    .mock small { display: block; margin-top: 10px; font-size: .82rem; color: var(--soft); }
+    .more { margin-top: 36px; }
+    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .fact { padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: var(--shadow); min-width: 0; }
+    .fact h3 { margin-bottom: 8px; }
+    .fact p { color: var(--muted); font-size: 1rem; }
+
+    /* ---------- app overlay (circular reveal from the clicked button) ---------- */
+    .appshell { position: fixed; inset: 0; z-index: 30; background: var(--bg); visibility: hidden; clip-path: circle(0px at var(--ox, 50%) var(--oy, 50%)); transition: clip-path .9s cubic-bezier(.76, 0, .24, 1), visibility 0s .9s; }
+    .appshell.open { visibility: visible; clip-path: circle(150vmax at var(--ox, 50%) var(--oy, 50%)); transition: clip-path .9s cubic-bezier(.76, 0, .24, 1), visibility 0s; }
+    .appbar { position: absolute; left: 0; right: 0; top: 0; height: 64px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); background: rgba(238, 246, 234, .9); border-bottom: 1px solid var(--line); }
+    .appbar .logo { margin-right: 0; }
+    .appbar .acts { display: flex; gap: 8px; }
+    .appframe { position: absolute; left: 0; right: 0; top: 64px; width: 100%; height: calc(100% - 64px); border: 0; background: var(--bg); }
+
+    @media (prefers-reduced-motion: reduce) { .appshell { transition: none; } .cue span { animation: none; } .rail button span { transition: none; } }
+  </style>
+</head>
+<body class="home" data-ambience>
+  <canvas id="world" aria-hidden="true"></canvas>
+  <canvas id="post" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="space" aria-hidden="true"><canvas id="stars"></canvas><canvas id="globe"></canvas><canvas id="air"></canvas></div>
+  <div id="white" aria-hidden="true"></div>
+  <div class="bar" id="bar"></div>
+
+  <header class="site-nav clear" id="sitenav">
+    <div class="wrap nav-row">
+      <a class="logo" href="index.html" aria-label="Carbon Pulse, home">Carbon Pulse</a>
+      <nav class="nav-menu" id="navmenu" aria-label="Main">
+        <a href="calculator.html">Quick Check</a>
+        <a href="learn.html">Learn</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html">Contact Us</a>
+        <a class="btn small primary" href="carbonlog.html">Open CarbonLog</a>
+      </nav>
+      <button class="sound-btn" type="button" data-sound-toggle aria-pressed="true" aria-label="Sound on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wv" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="navmenu"><span class="sr">Menu</span><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="prologue" id="earth" aria-label="Earthrise: the Earth overheats, then the story of CO₂, heat and ice today">
+      <div class="pin">
+        <div class="er-title" id="erTitle"><h2>EARTHRISE</h2><p class="er-mono">A concept of carbon emission</p></div>
+        <div class="er-hud" id="erHud" aria-hidden="true">
+          <div class="br"></div>
+          <div class="tl"><p>Warming <span class="hot" id="erTemp">+0.00 °C</span></p><p class="dim" id="erTempNote">Since 1850–1900</p></div>
+          <div class="tr"><p>Earth elev <span class="ev" id="erElev">0.0°</span></p><p class="dim">Above horizon</p></div>
+          <div class="bl">Mare Tranquillitatis · 0.67°N 23.47°E</div>
+          <div class="brr">Scroll <span class="er-bounce" style="margin:0">↓</span></div>
+        </div>
+        <p class="er-sub" id="erSub1">Today the world is <b>1.44 °C</b> warmer. And it keeps rising.</p>
+        <p class="er-sub" id="erSub2">Keep burning, and the planet burns like a sun.</p>
+        <div class="er-lbl" id="erGalaxy"><p>THE MILKY WAY</p><p class="er-mono">About 100,000 light-years across</p></div>
+        <div class="er-lbl" id="erEarth"><p>EARTH · TODAY</p><p class="er-mono">One planet. Still warming.</p></div>
+        <div class="er-veil" id="erVeil" aria-hidden="true"><div class="er-veil-in">
+          <p class="er-mono k">A concept of carbon emission</p>
+          <p class="s">Scroll to clear the dust</p>
+          <span class="er-bounce">↓</span>
+        </div></div>
+        <canvas class="er-dust" id="erDust" aria-hidden="true"></canvas>
+        <div class="co2-hud" id="co2hud" aria-hidden="true">
+          <p class="co2-title">Carbon dioxide (CO₂)</p>
+          <div class="months"><div class="track"><i id="monthbar"></i></div><div class="ticks"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div></div>
+        </div>
+        <article class="ecard" data-a=".622" data-b=".706">
+          <p class="ek">Our atmosphere</p>
+          <h2>Air has no borders.</h2>
+          <p>CO₂ released anywhere rides the winds around the whole planet. The glowing trails start where people burn the most fuel.</p>
+          <p class="stat"><b data-count="432" data-from="313" data-a=".622" data-dur=".042" data-suf=" ppm">432 ppm</b><span>CO₂ in the air at Mauna Loa in May 2026. In 1958 it was 313 ppm.</span></p>
+          <p class="src">Illustration of typical wind belts, not live data · <a href="https://today.ucsd.edu/story/annual-carbon-dioxide-peak-reaches-432-parts-per-million" target="_blank" rel="noopener">Source: Scripps</a></p>
+        </article>
+        <article class="ecard" data-a=".714" data-b=".79">
+          <p class="ek warn">Warning · Heat</p>
+          <h2>A planet with a fever.</h2>
+          <p>2025 was one of the three warmest years ever measured. Heatwaves are longer and hotter.</p>
+          <p class="stat hot"><b data-count="1.44" data-a=".714" data-dur=".05" data-dec="2" data-pre="+" data-suf=" °C">+1.44 °C</b><span>above the 1850–1900 average (± 0.13 °C)</span></p>
+          <p class="src"><a href="https://wmo.int/news/media-centre/wmo-confirms-2025-was-one-of-warmest-years-record" target="_blank" rel="noopener">Source: World Meteorological Organization</a></p>
+        </article>
+        <article class="ecard" data-a=".824" data-b=".908">
+          <p class="ek warn">Warning · Ice</p>
+          <h2>The Alps are losing their glaciers.</h2>
+          <canvas class="glacier" id="glacier" aria-hidden="true"></canvas>
+          <p>Swiss glaciers lost 3 % of their volume in 2025 alone, and about a quarter in the last ten years.</p>
+          <p class="src"><a href="https://theturtleislandnews.com/index.php/2025/10/01/swiss-glaciers-shrank-3-this-year-the-fourth-biggest-retreat-on-record-experts-say/" target="_blank" rel="noopener">Source: GLAMOS and the Swiss Academy of Sciences, via AP</a></p>
+        </article>
+        <article class="ecard center" data-a=".916" data-b=".966">
+          <h2>Now, zoom in.</h2>
+          <p>A summer afternoon in southern Germany.</p>
+        </article>
+        <div class="nova-logo" id="novaLogo" role="img" aria-label="Carbon Pulse presents CarbonLog">
+          <div class="nl-word" aria-hidden="true"><svg class="cp-word" viewBox="-2 -10 1086 200" aria-hidden="true"><path d="M79.73 63.23 A40 40 0 1 0 79.73 116.77 M151.00 50.00 A40 40 0 0 0 151.00 130.00 A40 40 0 0 0 151.00 50.00 Z M191.00 40.00 L191.00 140.00 M220.00 140.00 L220.00 40.00 M220.00 90.00 A40 40 0 0 1 278.78 54.68 M345.00 50.00 A40 40 0 0 0 345.00 130.00 A40 40 0 0 0 345.00 50.00 Z M305.00 0.00 L305.00 140.00 M454.00 50.00 A40 40 0 0 0 454.00 130.00 A40 40 0 0 0 454.00 50.00 Z M523.00 140.00 L523.00 40.00 M523.00 80.00 A40 40 0 0 1 603.00 80.00 L603.00 140.00 M716.00 50.00 A40 40 0 0 0 716.00 130.00 A40 40 0 0 0 716.00 50.00 Z M676.00 40.00 L676.00 180.00 M865.00 40.00 L865.00 140.00 M785.00 40.00 L785.00 100.00 A40 40 0 0 0 865.00 100.00 M894.00 0.00 L894.00 140.00 M961.13 61.55 A20 20 0 1 0 943.00 90.00 A20 20 0 1 1 924.87 118.45 M1072.00 90.00 A40 40 0 1 0 1063.52 114.63 M992.00 90.00 L1072.00 90.00" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="butt" stroke-linejoin="round"/></svg></div>
+          <svg class="nl-pulse" viewBox="0 0 520 60" aria-hidden="true"><path pathLength="1" d="M0 30 H190 L205 30 L215 10 L228 52 L240 4 L252 44 L262 30 H520"/></svg>
+          <p class="nl-sub" aria-hidden="true">presents <b>CarbonLog</b></p>
+        </div>
+        <div class="cue" id="cue" aria-hidden="true"><span></span></div>
+      </div>
+    </section>
+
+    <section class="heatwave" id="heat" aria-label="A heatwave afternoon in Germany">
+      <div class="pin">
+        <article class="ecard" data-a=".06" data-b=".36">
+          <p class="ek warn">Warning · Heatwave</p>
+          <h2>Summers in Germany are getting hotter.</h2>
+          <p>Heatwaves come more often and stay longer. Germany’s highest temperature so far was measured on 25 July 2019.</p>
+          <p class="stat hot"><b data-count="41.2" data-from="30" data-a=".08" data-dur=".14" data-dec="1" data-suf=" °C">41.2 °C</b><span>in Duisburg-Baerl and Tönisvorst</span></p>
+          <p class="src"><a href="https://www.spektrum.de/news/hitze-sommer-temperaturrekord-in-lingen-annulliert/1809758" target="_blank" rel="noopener">Source: German Weather Service (DWD), via Spektrum</a></p>
+        </article>
+        <article class="ecard" data-a=".42" data-b=".72">
+          <p class="ek warn">Warning · Hot nights</p>
+          <h2>The sun goes down. The heat stays.</h2>
+          <p>After a hot day, streets and buildings give back the stored heat all night, so people and nature get little time to recover.</p>
+        </article>
+        <article class="ecard center" data-a=".78" data-b=".93">
+          <h2>It doesn’t have to stay this way.</h2>
+          <p>Let’s walk into a cleaner tomorrow.</p>
+        </article>
+        <div class="thermo" id="thermo" aria-hidden="true">
+          <div class="th-tube"><i id="thfill"></i></div>
+          <div class="th-read"><b id="thval">24 °C</b><span id="thtime">15:00</span><small>Illustration</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="journey" id="journey" aria-label="A walk through a solarpunk valley">
+      <div class="pin">
+        <div class="wrap intro" id="intro">
+          <h1 id="introH1">Know your footprint.</h1>
+          <div class="intro-sub" id="introSub">
+            <p class="lede">CarbonLog turns your company’s energy, travel and purchases into CO₂ numbers you can act on, so people and nature can keep sharing the same valley.</p>
+            <div class="ctas">
+              <button type="button" class="btn primary js-open">Start logging</button>
+              <a class="btn" href="calculator.html">Try a quick check</a>
+            </div>
+          </div>
+        </div>
+
+        <article class="chap left" data-z="62">
+          <p class="label"><i>1</i>Electricity &amp; gas</p>
+          <h2>Switch on the numbers</h2>
+          <p>Type in the kWh or MWh from your energy bill. CarbonLog converts it into estimated CO₂ for you, so there is no maths to do.</p>
+          <p class="chip">≈ 0.38 kg CO₂ per kWh <i>approximate factor</i></p>
+        </article>
+        <article class="chap right" data-z="150">
+          <p class="label"><i>2</i>Car, train &amp; flights</p>
+          <h2>Every trip counts</h2>
+          <p>Log business trips in kilometres or miles. Pick how you travelled and the distance, and the footprint is calculated on the spot.</p>
+          <p class="chip">Train ≈ 0.035 · Flight ≈ 0.15 kg CO₂ per km <i>approximate</i></p>
+        </article>
+        <article class="chap left" data-z="232">
+          <p class="label"><i>3</i>Things you buy</p>
+          <h2>Spend that adds up</h2>
+          <p>No supplier data needed. Enter what you spent in euros for a rough, spend-based estimate of what your purchases add.</p>
+          <p class="chip">≈ 0.40 kg CO₂ per € <i>very rough</i></p>
+        </article>
+        <article class="chap right" data-z="312">
+          <p class="label"><i>4</i>Your yearly goal</p>
+          <h2>Aim lower each year</h2>
+          <p>Set a reduction target, for example 15 % less than last year, and watch your progress on the dashboard as you log.</p>
+          <p class="chip">Target: −15 % vs last year <i>example</i></p>
+        </article>
+        <article class="chap left final" data-z="384" data-hold>
+          <h2>See your number in minutes.</h2>
+          <p class="lede">Log a few activities and your company’s footprint appears on the dashboard.</p>
+          <div class="ctas">
+            <button type="button" class="btn primary js-open">Start logging</button>
+            <a class="btn" href="pricing.html">See pricing</a>
+          </div>
+          <p class="fine">Free for individuals · estimates, not certified reports</p>
+        </article>
+
+        <nav class="rail" id="rail" aria-label="Places on the walk">
+          <button type="button" data-z="0"><span>Start</span><i></i></button>
+          <button type="button" data-z="62"><span>Energy</span><i></i></button>
+          <button type="button" data-z="150"><span>Travel</span><i></i></button>
+          <button type="button" data-z="232"><span>Goods</span><i></i></button>
+          <button type="button" data-z="312"><span>Goal</span><i></i></button>
+          <button type="button" data-z="398"><span>Arrive</span><i></i></button>
+        </nav>
+      </div>
+    </section>
+
+    <div class="after">
+      <section class="block" id="how">
+        <div class="wrap">
+          <p class="kicker rv">How it works</p>
+          <h2 class="rv">Three steps. No spreadsheet.</h2>
+          <ol class="steps">
+            <li class="rv">
+              <span class="n">1</span>
+              <h3>Log what happened</h3>
+              <p>Pick a category, enter an amount and a date. Add a note if you like.</p>
+              <div class="mock"><span class="ex">Example</span><div class="mrow"><b>Electricity</b><span>2,400 kWh</span><em>912 kg CO₂</em></div></div>
+            </li>
+            <li class="rv">
+              <span class="n">2</span>
+              <h3>See where it comes from</h3>
+              <p>The dashboard shows your total, your biggest source and a month-by-month trend.</p>
+              <div class="mock"><span class="ex">Example</span><div class="bars" aria-hidden="true"><i style="--h:38%"></i><i style="--h:56%"></i><i style="--h:92%"></i><i style="--h:64%"></i><i style="--h:48%"></i><i style="--h:41%"></i></div><small>CO₂ per month</small></div>
+            </li>
+            <li class="rv">
+              <span class="n">3</span>
+              <h3>Reduce, and track it</h3>
+              <p>Set a yearly target and see how far along you are compared with last year.</p>
+              <div class="mock"><span class="ex">Example</span><div class="meter" aria-hidden="true"><i style="width:62%"></i></div><small>62 % of the way to the target</small></div>
+            </li>
+          </ol>
+          <p class="more rv"><a class="btn" href="learn.html">Learn the carbon basics</a></p>
+        </div>
+      </section>
+
+      <section class="block" id="trust" style="padding-top:0">
+        <div class="wrap">
+          <p class="kicker rv">Good to know</p>
+          <h2 class="rv">Honest numbers for a first step</h2>
+          <div class="facts">
+            <div class="fact rv"><h3>Estimates, not audits</h3><p>CarbonLog gives you a close first estimate. It is not a certified emissions report.</p></div>
+            <div class="fact rv"><h3>Factors you can check</h3><p>Every emission factor is listed in Settings with its source and year. Verify it against an official source before you report.</p></div>
+            <div class="fact rv"><h3>History stays put</h3><p>Changing a factor never rewrites the entries you saved earlier.</p></div>
+            <div class="fact rv"><h3>Edit anything</h3><p>Fix a typo, change a unit or delete an entry whenever you like.</p></div>
+          </div>
+          <p class="more rv ctas"><button type="button" class="btn primary js-open">Start logging</button><a class="btn" href="pricing.html">See pricing</a></p>
+        </div>
+      </section>
+
+      <footer class="site-foot">
+        <div class="wrap foot-grid">
+          <div><a class="logo" href="index.html">Carbon Pulse</a><p>Makers of CarbonLog, the carbon footprint logger for small companies.</p></div>
+          <nav class="foot-links" aria-label="Footer">
+            <a href="calculator.html">Quick Check</a><a href="learn.html">Learn</a><a href="pricing.html">Pricing</a><a href="contact.html">Contact Us</a><a href="carbonlog.html">Open CarbonLog</a><a href="nova.html">Carbon Pulse 3D demo</a>
+          </nav>
+          <p class="fine">A student project at ESB Business School, Reutlingen University. CarbonLog shows estimates, not certified emission reports.</p>
+        </div>
+      </footer>
+    </div>
+  </main>
+
+  <div class="appshell" id="appshell" role="dialog" aria-modal="true" aria-label="CarbonLog" aria-hidden="true">
+    <div class="appbar">
+      <span class="logo">Carbon<b>Log</b></span>
+      <div class="acts">
+        <a class="btn small" href="carbonlog.html">Full page</a>
+        <button type="button" class="btn small" id="appclose" aria-label="Close CarbonLog and return to the page">✕ Close</button>
+      </div>
+    </div>
+    <iframe class="appframe" id="appframe" title="CarbonLog – carbon footprint logger" data-src="carbonlog.html"></iframe>
+  </div>
+
+  <script id="globe-fs" type="x-shader/x-fragment">
+    precision highp float;
+    uniform vec2 uC; uniform float uR, uLat, uLon, uTime, uHeat, uIce, uGlow, uAlpha, uHi, uPx, uMelt, uBlue;
+    uniform sampler2D uLo, uMap, uDens;
+    float hash(vec3 p) { p = fract(p * 0.3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float noise(vec3 x) {
+      vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+    }
+    float fbm(vec3 p) { float a = .5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * noise(p); p *= 2.03; a *= .5; } return s * 1.07; }
+    vec3 earthPoint(vec3 n) {                       // view direction -> point on the Earth (rotated by lat/lon of the camera)
+      float cl = cos(-uLat), sl = sin(-uLat);
+      vec3 a1 = vec3(n.x, n.y * cl - n.z * sl, n.y * sl + n.z * cl);
+      float co = cos(uLon), so = sin(uLon);
+      return vec3(a1.x * co + a1.z * so, a1.y, -a1.x * so + a1.z * co);
+    }
+    vec2 toUV(vec3 p) { return vec2(atan(p.x, p.z) / 6.2831853 + .5, .5 - asin(clamp(p.y, -1.0, 1.0)) / 3.1415927); }
+    void main() {
+      vec2 q = (gl_FragCoord.xy - uC) / uR;
+      float d = length(q);
+      const float SH = 1.22;
+      if (d > SH) { gl_FragColor = vec4(0.0); return; }
+      float hg = 1.0 + uHeat * .6;
+      if (d >= 1.0) {                                // the CO2 shell beyond the limb: thick orange haze with swirling edges
+        float h = (d - 1.0) / (SH - 1.0);
+        vec2 qq = q / d * .999; vec3 pl = earthPoint(vec3(qq, sqrt(max(0.0, 1.0 - dot(qq, qq)))));
+        float dl = texture2D(uDens, toUV(pl)).r;
+        float ang = atan(q.y, q.x);
+        float sw = fbm(vec3(cos(ang) * 2.2, sin(ang) * 2.2, h * 1.5) + vec3(uTime * .02, 0.0, uTime * .03) + pl * 1.5);
+        float den = exp(-h * 2.4) * (.55 + .75 * sw + dl * .9) * (1.0 - smoothstep(.72, 1.0, h));
+        vec3 c = mix(vec3(1.0, .62, .24), vec3(1.0, .36, .12), clamp(dl * 1.2 + uHeat * .35, 0.0, 1.0));
+        c = mix(c, vec3(.42, .7, 1.0), uBlue); den *= 1.0 - uBlue * .5;                     // a calm blue sky before it heats
+        c = mix(c, vec3(1.0, .9, .75), uMelt * .6);
+        float a = clamp(den * .85 * hg * (1.0 + uMelt * 1.5), 0.0, 1.0) * uAlpha;
+        gl_FragColor = vec4(c * a, a); return;
+      }
+      float z = sqrt(1.0 - d * d); vec3 n = vec3(q, z);
+      vec3 p = earthPoint(n); vec2 uv = toUV(p);
+      vec4 lo = texture2D(uLo, uv), hi = texture2D(uMap, uv);
+      vec4 m = mix(lo, hi, uHi);
+      float detail = fbm(p * 22.0);
+      float land = smoothstep(.42, .58, m.r + (detail - .5) * .16 * (1.0 - uHi * .5));
+      float inland = texture2D(uLo, uv + vec2(.006, 0.0)).r * texture2D(uLo, uv - vec2(.006, 0.0)).r * texture2D(uLo, uv + vec2(0.0, .012)).r * texture2D(uLo, uv - vec2(0.0, .012)).r;
+      float latD = abs(asin(clamp(p.y, -1.0, 1.0))) * 57.29578, nz = fbm(p * 4.0 + 3.0);
+      vec3 lc = mix(vec3(.07, .17, .06), vec3(.2, .29, .11), smoothstep(.35, .65, nz));
+      float arid = exp(-pow((latD - 23.0) / 10.0, 2.0)) * smoothstep(.25, .55, inland * .6 + nz * .6);
+      lc = mix(lc, vec3(.44, .37, .21), smoothstep(.15, .5, arid)); lc = mix(lc, vec3(.66, .52, .35), smoothstep(.45, .85, arid));
+      lc = mix(lc, vec3(.46, .44, .36), smoothstep(52.0, 64.0, latD));
+      float ridge = 1.0 - abs(fbm(p * 9.0) * 2.0 - 1.0);
+      lc = mix(lc, vec3(.32, .28, .22), smoothstep(.75, .95, ridge) * .35);
+      lc = mix(lc, vec3(.9, .92, .94), smoothstep(64.0, 74.0, latD + (nz - .5) * 12.0));
+      lc *= .88 + .24 * detail;
+      if (m.b > .01) { float glac = m.b * smoothstep(.35, .55, fbm(p * 90.0) + uIce * .55 - .25); lc = mix(lc, vec3(.95, .98, 1.0), glac); }   // Alpine glaciers shrink as uIce falls
+      vec3 col = mix(mix(vec3(.015, .03, .06), vec3(.03, .08, .12), smoothstep(.02, .4, lo.r) * (1.0 - land)), lc, land);
+      col = mix(col, vec3(1.0, .82, .38), m.g * land * uGlow * .35);                      // Germany
+      vec3 L = normalize(vec3(-.35, .45, .82)); float w = clamp((dot(n, L) + .4) / 1.4, 0.0, 1.0);
+      col *= .45 + .75 * w;
+      vec3 H = normalize(L + vec3(0.0, 0.0, 1.0)); col += vec3(1.0, .9, .75) * pow(max(dot(n, H), 0.0), 40.0) * (1.0 - land) * .25;
+      // CO2: red plumes near the ground, an orange veil that thickens toward the limb
+      vec2 wv = (vec2(fbm(p * 4.0 + vec3(uTime * .03)), fbm(p * 4.0 + vec3(5.2, 1.3, uTime * .03))) - .5) * .035;   // eddies
+      float c2 = texture2D(uDens, uv + wv).r;
+      col = mix(col, vec3(.86, .2, .07), smoothstep(.05, .5, c2) * .6 * (1.0 - uHi * .5) * (1.0 - uBlue * .9));
+      float veil = .14 + .62 * pow(1.0 - z, 1.8) + c2 * .16 + uHeat * .1;
+      col = col * (1.0 - veil * .5) + mix(vec3(1.0, .5, .16), vec3(.35, .62, 1.0), uBlue) * veil * .4 * hg;
+      col = mix(col, col * vec3(.8, 1.0, 1.25) + vec3(0.0, .02, .06) * (1.0 - land), uBlue * .6);
+      float hp = smoothstep(.45, .8, fbm(p * 3.2 + vec3(uTime * .04, 0.0, uTime * .03))) * uHeat * land * (.8 + .2 * sin(uTime * 2.2));
+      col = mix(col, vec3(1.0, .32, .08), hp * .4);                                        // the land heats up
+      float cld = smoothstep(.6, .85, fbm(p * 3.4 + vec3(uTime * .015, 7.0, 0.0))) * .35 * (1.0 - uHi * .7) * (1.0 + uBlue * .7);
+      col = mix(col, vec3(1.0, .93, .86), cld);
+      col = mix(col, vec3(1.0, .6, .25) * 1.5, uMelt * .75);                                // overheating
+      col = 1.0 - exp(-1.6 * col);
+      float a = uAlpha;                                   // solid to the limb, where the haze shell takes over
+      gl_FragColor = vec4(col * a, a);
+    }
+  </script>
+
+  <script id="post-fs" type="x-shader/x-fragment">
+    precision highp float;
+    uniform sampler2D uTex; uniform vec2 uRes; uniform float uAb, uInk, uDot, uDotSize;
+    float lum(vec3 c) { return dot(c, vec3(.299, .587, .114)); }
+    void main() {
+      vec2 uv = gl_FragCoord.xy / uRes, c = uv - .5;
+      vec2 off = c * (uAb / uRes.x) * (1.0 + dot(c, c) * 2.0);                   // colour misregistration, stronger at the edges and when you scroll fast
+      vec3 col = vec3(texture2D(uTex, uv + off).r, texture2D(uTex, uv).g, texture2D(uTex, uv - off).b);
+      vec2 px = 1.5 / uRes;                                                      // ink lines from edges in brightness
+      float e = length(vec2(lum(texture2D(uTex, uv + vec2(px.x, 0.0)).rgb) - lum(texture2D(uTex, uv - vec2(px.x, 0.0)).rgb),
+                            lum(texture2D(uTex, uv + vec2(0.0, px.y)).rgb) - lum(texture2D(uTex, uv - vec2(0.0, px.y)).rgb)));
+      col *= 1.0 - smoothstep(.06, .2, e) * uInk;
+      float L = lum(col);                                                        // halftone dots in the shadows
+      vec2 g = mat2(.7071, -.7071, .7071, .7071) * gl_FragCoord.xy / uDotSize;
+      float r = sqrt(clamp(.85 - L, 0.0, 1.0)) * .62;
+      col *= 1.0 - (1.0 - smoothstep(r - .1, r + .1, length(fract(g) - .5))) * uDot * smoothstep(.75, .3, L);
+      col = mix(col, floor(col * 10.0 + .5) / 10.0, .2);                        // a touch of cel shading
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+  <script src="sound.js"></script>
+  <script src="site.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const $ = (s) => document.querySelector(s);
+    const root = document.documentElement;
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const smooth = (t) => t * t * (3 - 2 * t);
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const mix3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+    const sc3 = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+    const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const mobile = innerWidth < 760;
+
+    // =====================================================================
+    // THE WORLD (metres; x right, y up, z forward along the walk)
+    // =====================================================================
+    let seed = 11;
+    const sr = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const sR = (a, b) => a + sr() * (b - a);
+    const pick = (a) => a[sr() * a.length | 0];
+
+    const L = 400;                                  // length of the walk
+    const PW = 2.3;                                 // path width
+    const TZ = 168;                                 // tram line crossing
+    const pathX = (z) => 3.2 * Math.sin(z * .017) + 1.6 * Math.sin(z * .043 + 1);
+    const objs = [], far = [], fields = [], patches = [], stones = [], reserved = [];
+    const reserve = (x0, x1, z0, z1) => reserved.push([x0, x1, z0, z1]);
+    const busy = (x, z, pad = 0) => Math.abs(x - pathX(z)) < PW / 2 + .5 || reserved.some((r) => x > r[0] - pad && x < r[1] + pad && z > r[2] - pad && z < r[3] + pad);
+
+    const WALLS = [[250, 246, 234], [226, 242, 232], [252, 238, 208], [224, 238, 250], [244, 230, 238]];
+    const DOORS = [[96, 150, 90], [70, 122, 168], [204, 122, 72], [150, 104, 72]];
+    const CLOTHES = [[244, 190, 60], [96, 170, 220], [226, 116, 96], [120, 190, 120], [176, 148, 220], [250, 250, 244], [240, 150, 60]];
+    const PANTS = [[70, 90, 120], [110, 84, 60], [60, 70, 70], [150, 120, 90]];
+    const SKIN = [[246, 206, 172], [216, 162, 122], [170, 114, 80], [120, 80, 56]];
+    const HAIR = [[52, 36, 26], [112, 72, 40], [30, 30, 36], [204, 164, 92], [152, 62, 40]];
+    const FLOWERS = [[255, 214, 60], [255, 255, 255], [242, 124, 152], [122, 152, 242], [250, 152, 62], [190, 122, 222]];
+    const TREE_PAL = [
+      { d: [44, 104, 58], m: [74, 146, 70], l: [146, 202, 98] },
+      { d: [58, 112, 52], m: [96, 160, 64], l: [170, 214, 96] },
+      { d: [40, 96, 70], m: [64, 136, 92], l: [128, 196, 128] },
+    ];
+
+    function cottage(z, side, off, o = {}) {
+      const w = o.w || 5.6, d = o.d || 6.2, x = pathX(z) + side * off;
+      objs.push({ type: 'cottage', x, z, zc: z + d / 2, w, d, wh: 2.9, rh: 4.7, wall: pick(WALLS), door: pick(DOORS), solarL: side > 0,
+        vine: sr() < .7, seed: sR(0, 6), vines: Array.from({ length: 7 }, () => [sR(0, 2.6), sR(.1, 1.2), sR(.22, .36)]),
+        plants: Array.from({ length: 6 }, () => [sR(.08, .92), sR(.15, .8)]) });
+      reserve(x - w / 2 - 1.2, x + w / 2 + 1.2, z - 1.2, z + d + 1.2);
+    }
+    const person = (x, z, o = {}) => objs.push(Object.assign({ type: 'person', x, z, zc: z, h: sR(1.6, 1.82), skin: pick(SKIN), hair: pick(HAIR), shirt: pick(CLOTHES), pants: pick(PANTS), anim: 'idle', ph: sR(0, 6.28) }, o));
+    const robot = (x, z, o = {}) => objs.push(Object.assign({ type: 'robot', x, z, zc: z, ph: sR(0, 6.28), mv: 0, basket: false }, o));
+    function makeTree(x, z, kind, o = {}) {
+      if (kind === 'cypress') return { type: 'cypress', x, z, zc: z, h: sR(6, 10), w: sR(1, 1.5), pal: sr() * 3 | 0 };
+      const r = o.r || sR(1.8, 3.2), th = o.th || sR(1.6, 2.8), cy = th + r * .75;
+      const blobs = [[0, cy, r * .78], [-r * .52, cy - r * .16, r * .58], [r * .52, cy - r * .1, r * .58], [-r * .22, cy + r * .42, r * .52], [r * .26, cy + r * .36, r * .5]]
+        .map(([bx, by, br]) => ({ x: bx + sR(-.1, .1) * r, y: by + sR(-.1, .1) * r, r: br }));
+      const dots = sr() < .12 ? 'blossom' : sr() < .12 ? 'fruit' : null;
+      return Object.assign({ type: 'tree', x, z, zc: z, r, th, blobs, pal: sr() * 3 | 0, dots,
+        dotsAt: dots ? Array.from({ length: 9 }, () => [sR(-.8, .8) * r, cy + sR(-.6, .7) * r]) : null }, o);
+    }
+
+    // --- 1 Energy: solar cottages, solar trees, turbines on the hills
+    [[58, 1, 8.5], [66, -1, 9], [78, 1, 10], [90, -1, 8.6], [104, 1, 9.5], [116, -1, 10]].forEach(([z, s, o]) => cottage(z, s, o));
+    [[63, -1, 4.3], [84, 1, 4.6], [98, -1, 4.3]].forEach(([z, s, o]) => { const x = pathX(z) + s * o; objs.push({ type: 'solartree', x, z, zc: z, h: 5.6, ph: sR(0, 6) }); reserve(x - 1.6, x + 1.6, z - 1.6, z + 1.6); });
+    person(pathX(70) - 3.4, 70, { anim: 'wave' });
+    robot(pathX(92) + 3.3, 92, { basket: true });
+    person(pathX(110) - 3, 110, { h: 1.2, anim: 'wave' });
+    for (let i = 0; i < 8; i++) { const z = 118 + i * 42; objs.push({ type: 'turbine', x: pathX(z) + (i % 2 ? 1 : -1) * sR(38, 72), y0: 0, z, zc: z, h: sR(36, 48), ph: sR(0, 6.28) }); }
+    for (let i = 0; i < 14; i++) far.push({ type: 'turbine', x: sR(-420, 420), y0: 0, z: sR(520, 900), h: sR(60, 85), ph: sR(0, 6.28) });
+
+    // --- 2 Travel: solar tram, station shelter, signpost, airships
+    reserve(-1e5, 1e5, TZ - 2.6, TZ + 2.6);
+    objs.push({ type: 'track', x: 0, z: TZ, zc: TZ });
+    { const z = TZ - 5.5, x = pathX(z) + 4.4; objs.push({ type: 'shelter', x, z, zc: z }); reserve(x - 2, x + 2, z - 1, z + 2); person(x - .6, z - .6, { anim: 'idle' }); person(x + 1.1, z - .8, { anim: 'wave', h: 1.25 }); }
+    objs.push({ type: 'sign', x: pathX(150) - 2.1, z: 150, zc: 150 });
+    objs.push({ type: 'airship', x: pathX(232) - 20, y: 34, z: 236, zc: 236, sp: .05 });
+    objs.push({ type: 'airship', x: 70, y: 62, z: 470, zc: 470, sp: -.03 });
+
+    // --- 3 Goods: fields with rows, fences, greenhouse domes, a market stall, robots and farmers
+    [[196, 222, 1, 'wheat'], [200, 228, -1, 'lavender'], [229, 262, 1, 'veg'], [236, 266, -1, 'wheat']].forEach(([z0, z1, s, kind]) => {
+      let edge = s > 0 ? -1e9 : 1e9;
+      for (let z = z0; z <= z1; z += 1) edge = s > 0 ? Math.max(edge, pathX(z)) : Math.min(edge, pathX(z));
+      const xn = edge + s * 2.6, xf = xn + s * sR(13, 18);
+      const fd = { x0: Math.min(xn, xf), x1: Math.max(xn, xf), z0, z1, kind };
+      fields.push(fd); reserve(fd.x0, fd.x1, z0, z1);
+      robot((fd.x0 + fd.x1) / 2, (z0 + z1) / 2, { mv: 3 });
+    });
+    for (let z = 194; z < 268; z += 2.6) for (const s of [-1, 1]) objs.push({ type: 'post', x: pathX(z) + s * 1.75, z, zc: z, x2: pathX(z + 2.6) + s * 1.75, z2: z + 2.6 });
+    [[214, -1, 25, 5.5], [250, 1, 25, 6.5]].forEach(([z, s, o, r]) => { const x = pathX(z) + s * o; objs.push({ type: 'dome', x, z, zc: z, r, plants: Array.from({ length: 9 }, () => [sR(-.8, .8), sR(.15, .5), sR(.12, .22)]) }); reserve(x - r, x + r, z - r, z + r); });
+    { const z = 232, x = pathX(z) - 3.6; objs.push({ type: 'stall', x, z, zc: z + .5 }); reserve(x - 2, x + 2, z - .5, z + 1.8); person(x + .5, z - .9, { anim: 'idle' }); person(x - .9, z - 1.1, { anim: 'idle', h: 1.3 }); person(x, z + 1.35, { anim: 'idle', hat: true }); robot(x + 2.4, z - .3, { basket: true }); }
+    person(fields.find((fd) => fd.kind === 'veg').x0 + 4, 246, { anim: 'work', hat: true });
+
+    // --- 4 Goal: the village square with the community tree, lanterns, a kite and benches
+    const PC = { x: pathX(322), z: 322, r: 13 };
+    reserve(PC.x - PC.r, PC.x + PC.r, PC.z - PC.r, PC.z + PC.r);
+    objs.push(makeTree(PC.x + 4.5, 327, 'round', { r: 6.4, th: 4.6, big: true, swing: true }));
+    [[300, -1, 17], [306, 1, 18], [338, -1, 17.5], [344, 1, 17]].forEach(([z, s, o]) => cottage(z, s, o));
+    { const poles = [200, 245, 290, 335, 20, 65, 110, 155].map((a) => [PC.x + Math.cos(a * Math.PI / 180) * 10.5, PC.z + Math.sin(a * Math.PI / 180) * 10.5]);
+      poles.forEach((p, i) => { const q = poles[(i + 1) % poles.length]; objs.push({ type: 'lanterns', a: p, b: q, zc: (p[1] + q[1]) / 2, z: (p[1] + q[1]) / 2 }); }); }
+    for (let i = 0, n = 0; n < 8 && i < 60; i++) { const a = sR(0, 6.28), d = sR(3.5, 9), px = PC.x + Math.cos(a) * d, pz = PC.z + Math.sin(a) * d; if (Math.abs(px - pathX(pz)) < 2.6) continue; person(px, pz, { anim: sr() < .4 ? 'wave' : 'idle' }); n++; }
+    { const cx = PC.x - 6.5, cz = 315; person(cx, cz, { h: 1.2, anim: 'kite' }); objs.push({ type: 'kite', x: cx - 4, y: 15, z: cz + 14, zc: cz + 14, hx: cx + .25, hz: cz }); }
+    objs.push({ type: 'bench', x: PC.x - 8.5, z: 327, zc: 327 }, { type: 'bench', x: PC.x + 9, z: 316, zc: 316 });
+    robot(PC.x + 7, 330, { mv: 1.2 });
+
+    // --- 5 Arrive: a bench on the overlook, two people watching the sunset (backrest on your side)
+    { const z = 412, x = pathX(z) + 1.4; objs.push({ type: 'bench', x, z, zc: z, near: true }); person(x - .45, z + .25, { back: true, sit: true }); person(x + .45, z + .25, { back: true, sit: true, h: 1.7 }); }
+    objs.push(makeTree(pathX(396) - 9, 396, 'round', { r: 4.2, th: 3.2 }));
+
+    // --- nature everywhere else
+    for (let z = 3; z < 560; z += sR(1.3, 2.8)) {
+      const n = 1 + (sr() * 2.2 | 0);
+      for (let k = 0; k < n; k++) {
+        const s = sr() < .5 ? -1 : 1, x = pathX(z) + s * sR(4.2, 48);
+        if (busy(x, z, 1.5)) continue;
+        objs.push(makeTree(x, z, sr() < .13 ? 'cypress' : 'round'));
+      }
+    }
+    for (let z = 2; z < 430; z += sR(2.5, 5)) { const s = sr() < .5 ? -1 : 1, x = pathX(z) + s * sR(2.2, 6); if (busy(x, z, .6)) continue;
+      objs.push({ type: 'bush', x, z, zc: z, blobs: Array.from({ length: 4 }, () => [sR(-.5, .5), sR(.25, .55), sR(.3, .5)]), pal: sr() * 3 | 0 }); }
+    for (let z = .8; z < 428; z += mobile ? .6 : .42) for (let k = 0; k < 2; k++) {
+      const s = sr() < .5 ? -1 : 1, x = pathX(z) + s * sR(1.35, 9); if (busy(x, z)) continue;
+      objs.push({ type: 'flower', x, z, zc: z, c: pick(FLOWERS), h: sR(.18, .42), ph: sR(0, 6.28) });
+    }
+    for (let z = .6; z < 428; z += mobile ? .8 : .55) { const s = sr() < .5 ? -1 : 1, x = pathX(z) + s * sR(1.25, 7); if (busy(x, z)) continue;
+      objs.push({ type: 'grass', x, z, zc: z, h: sR(.2, .45), ph: sR(0, 6.28), c: pick([[84, 150, 64], [110, 170, 72], [70, 132, 60]]) }); }
+    for (let i = 0; i < 90; i++) { const z = sR(0, 520); patches.push({ x: pathX(z) + (sr() < .5 ? -1 : 1) * sR(3, 70), z, r: sR(4, 14), c: pick([[130, 184, 86], [104, 162, 72], [156, 196, 98], [120, 176, 110]]) }); }
+    for (let z = 0; z < 430; z += sR(.8, 1.3)) stones.push({ z, dx: sR(-.75, .75), r: sR(.15, .27) });
+    objs.sort((a, b) => a.zc - b.zc);
+    patches.sort((a, b) => b.z - a.z);
+    fields.sort((a, b) => b.z0 - a.z0);
+
+    // sky things
+    const clouds = Array.from({ length: 8 }, (_, i) => ({ x: i / 8 * 1.4 + rnd(0, .15), y: rnd(.12, .62), s: rnd(.7, 1.4), sp: rnd(.6, 1.4),
+      blobs: Array.from({ length: 6 }, (_, k) => [(k - 2.5) * rnd(.7, 1), rnd(-.6, .1) - (k > 0 && k < 5 ? .5 : 0), rnd(.8, 1.4)]) }));
+    const motes = Array.from({ length: mobile ? 50 : 90 }, () => ({ x: 0, y: 0, z: -1e9, ph: rnd(0, 6.28) }));
+    let flocks = [], nextFlock = 2.5;
+
+    // =====================================================================
+    // CAMERA + DRAWING HELPERS
+    // =====================================================================
+    const cv = $('#world'), ctx = cv.getContext('2d');
+    const shimC = document.createElement('canvas'), shx = shimC.getContext('2d');
+    let W = 1, H = 1, dpr = 1, f = 1, hor = 0, camX = 0, camY = 1.6, camZ = 0, T = 0, P = 0;
+    let K = null, haze = [214, 234, 222], tint = [1, 1, 1];
+    const NEAR = .35;
+    const KF = [
+      { p: 0,   top: [118, 190, 232], hor: [234, 246, 228], haze: [214, 234, 222], sun: [255, 247, 214], tint: [1, 1, 1] },
+      { p: .45, top: [94, 176, 232],  hor: [222, 241, 236], haze: [206, 230, 226], sun: [255, 250, 228], tint: [1, 1, 1] },
+      { p: .74, top: [112, 164, 214], hor: [255, 222, 172], haze: [242, 220, 186], sun: [255, 214, 150], tint: [1.04, .98, .9] },
+      { p: 1,   top: [86, 106, 170],  hor: [255, 170, 122], haze: [238, 186, 152], sun: [255, 180, 120], tint: [1.07, .9, .8] },
+    ];
+    const HOTK = [   // a heatwave afternoon: washed-out hot sky, then a burning sunset
+      { p: 0,  top: [158, 186, 206], hor: [252, 238, 210], haze: [246, 230, 200], sun: [255, 255, 238], tint: [1.08, 1, .86] },
+      { p: .5, top: [182, 152, 140], hor: [255, 206, 150], haze: [246, 206, 160], sun: [255, 238, 190], tint: [1.12, .95, .78] },
+      { p: 1,  top: [104, 52, 70],   hor: [255, 118, 62],  haze: [232, 126, 90],  sun: [255, 140, 80],  tint: [1.16, .8, .62] },
+    ];
+    let HEAT = { k: 0, s: 0 }, DRY = 0;
+    function dryC(c) { if (DRY <= 0) return c; const gr = clamp((c[1] - c[0]) / 50, 0, 1) * DRY; return [lerp(c[0], c[1] * .86 + 38, gr), lerp(c[1], c[1] * .8, gr), lerp(c[2], c[2] * .5, gr)]; }
+    const keyAt = (p) => keyFrom(KF, p);
+    function keyFrom(KF, p) {
+      let i = 0; while (i < KF.length - 2 && p > KF[i + 1].p) i++;
+      const a = KF[i], b = KF[i + 1], u = smooth(clamp((p - a.p) / (b.p - a.p), 0, 1)), o = {};
+      for (const k of ['top', 'hor', 'haze', 'sun', 'tint']) o[k] = mix3(a[k], b[k], u);
+      return o;
+    }
+    const fogA = (dz) => Math.min(.9, 1 - Math.exp(-dz / 170));
+    function C(c, dz, k) {
+      c = dryC(c);
+      const a = fogA(dz) * (k == null ? 1 : k), b = 1 - a;
+      return `rgb(${(c[0] * tint[0] * b + haze[0] * a) | 0},${(c[1] * tint[1] * b + haze[1] * a) | 0},${(c[2] * tint[2] * b + haze[2] * a) | 0})`;
+    }
+    const lineCol = (dz) => `rgba(36,58,40,${Math.max(0, .42 * (1 - fogA(dz) * 1.1)).toFixed(3)})`;
+    function pr(x, y, z) { const dz = z - camZ; if (dz < NEAR) return null; const s = f / dz; return [W / 2 + (x - camX) * s, hor + (camY - y) * s, s, dz]; }
+
+    // polygon in world space, clipped at the near plane; cull = skip faces pointing away from the camera
+    function poly(v, fill, cull, stroke) {
+      const zN = camZ + NEAR;
+      if (v.some((p) => p[2] < zN)) {
+        const out = [];
+        for (let i = 0; i < v.length; i++) {
+          const a = v[i], b = v[(i + 1) % v.length], ai = a[2] >= zN, bi = b[2] >= zN;
+          if (ai) out.push(a);
+          if (ai !== bi) { const t = (zN - a[2]) / (b[2] - a[2]); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, zN]); }
+        }
+        v = out; if (v.length < 3) return false;
+      }
+      const p = v.map((q) => { const s = f / (q[2] - camZ); return [W / 2 + (q[0] - camX) * s, hor + (camY - q[1]) * s]; });
+      if (cull) { let a = 0; for (let i = 0; i < p.length; i++) { const q = p[i], r = p[(i + 1) % p.length]; a += q[0] * r[1] - r[0] * q[1]; } if (a >= 0) return false; }
+      ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(.7, dpr * .9); ctx.lineJoin = 'round'; ctx.stroke(); }
+      return true;
+    }
+    const LS = (() => { const v = [.55, .72, .42], l = Math.hypot(...v); return v.map((x) => x / l); })();
+    function shadeOf(v) {   // light on a face (sun up, to the right)
+      const a = v[0], b = v[1], c = v[2];
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = c[0] - a[0], wy = c[1] - a[1], wz = c[2] - a[2];
+      const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx, l = Math.hypot(nx, ny, nz) || 1;
+      const d = -(nx * LS[0] + ny * LS[1] + nz * LS[2]) / l;
+      return d > 0 ? .82 + .26 * d : .82 + .14 * d;
+    }
+    function sub(A, B, Cc, D, u0, u1, v0, v1, fill, stroke) {     // a rectangle on a face (bilinear)
+      const q = (u, v) => [0, 1, 2].map((i) => A[i] + (B[i] - A[i]) * u + (D[i] - A[i]) * v + (A[i] - B[i] + Cc[i] - D[i]) * u * v);
+      return poly([q(u0, v0), q(u1, v0), q(u1, v1), q(u0, v1)], fill, false, stroke);
+    }
+    function boxFaces(x0, x1, y0, y1, z0, z1) {
+      return {
+        front: [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]],
+        left: [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]],
+        right: [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]],
+        top: [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]],
+        back: [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]],
+      };
+    }
+    function drawBox(F, col, dz, ln) { const vis = {}; for (const k in F) vis[k] = poly(F[k], C(sc3(col, shadeOf(F[k])), dz), true, ln); return vis; }
+    function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(.3, r), 0, 6.2832); }
+    function rr(x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+    function shadow(b, r, dz, a) { ctx.fillStyle = `rgba(30,62,32,${((a || .2) * (1 - fogA(dz))).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(b[0], b[1], r * b[2], Math.min(r * b[2], r * b[2] * camY / dz * 1.4), 0, 0, 6.2832); ctx.fill(); }
+    function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    const glowSprite = (() => { const s = document.createElement('canvas'); s.width = s.height = 64; const x = s.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.3, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return s; })();
+
+    // =====================================================================
+    // OBJECT PAINTERS
+    // =====================================================================
+    function dTree(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b;
+      if (dz > 330 || bx + o.r * 2 * s < 0 || bx - o.r * 2 * s > W) return;
+      const pal = TREE_PAL[o.pal], sway = reduce ? 0 : Math.sin(T * 1.1 + o.z) * .05 * o.r;
+      if (dz < 150) shadow(b, o.r * 1.05, dz, .16);
+      ctx.fillStyle = C([112, 82, 58], dz); ctx.fillRect(bx - .17 * s, by - (o.th + .3) * s, .34 * s, (o.th + .3) * s + 1);
+      if (o.big) ctx.fillRect(bx - .45 * s, by - o.th * s, .9 * s, o.th * s);
+      const passes = dz > 160 ? [[pal.m, 0, 0, .95]] : [[pal.d, .1, -.08, 1], [pal.m, 0, .02, .86], [pal.l, .17, .2, .48]];
+      passes.forEach(([c, ox, oy, k], pi) => {
+        ctx.fillStyle = C(c, dz); ctx.beginPath();
+        for (const bl of o.blobs) { if (pi === 2 && bl.y < o.th + o.r * .6) continue; const cx = bx + (bl.x + ox * o.r + sway) * s, cy = by - (bl.y + oy * o.r) * s, r = Math.max(.3, bl.r * k * s); ctx.moveTo(cx + r, cy); ctx.arc(cx, cy, r, 0, 6.2832); }
+        ctx.fill();
+      });
+      if (o.dotsAt && dz < 90) { ctx.fillStyle = C(o.dots === 'blossom' ? [248, 176, 200] : [246, 150, 50], dz); ctx.beginPath(); for (const [dx, dy] of o.dotsAt) { const cx = bx + (dx + sway) * s, cy = by - dy * s, r = Math.max(.4, .13 * s); ctx.moveTo(cx + r, cy); ctx.arc(cx, cy, r, 0, 6.2832); } ctx.fill(); }
+      if (o.swing && dz < 120) {
+        const sw = reduce ? 0 : Math.sin(T * 1.6) * .35, ax = bx - 1.3 * s, ay = by - (o.th + .9) * s;
+        ctx.strokeStyle = C([90, 70, 50], dz); ctx.lineWidth = Math.max(1, .04 * s);
+        const sx = ax + sw * s, sy = by - .6 * s;
+        line(ax - .3 * s, ay, sx - .3 * s, sy); line(ax + .3 * s, ay, sx + .3 * s, sy);
+        ctx.fillStyle = C([150, 104, 70], dz); ctx.fillRect(sx - .4 * s, sy, .8 * s, .08 * s);
+      }
+    }
+    function dCypress(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 330) return;
+      const pal = TREE_PAL[o.pal]; if (dz < 150) shadow(b, o.w * .8, dz, .14);
+      ctx.fillStyle = C(pal.d, dz); ctx.beginPath(); ctx.ellipse(bx, by - o.h * .55 * s, o.w * .55 * s, o.h * .55 * s, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = C(pal.m, dz); ctx.beginPath(); ctx.ellipse(bx + o.w * .12 * s, by - o.h * .6 * s, o.w * .34 * s, o.h * .46 * s, 0, 0, 6.2832); ctx.fill();
+    }
+    function dBush(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 120) return;
+      const pal = TREE_PAL[o.pal];
+      [[pal.d, 0, 1], [pal.m, .06, .8], [pal.l, .14, .4]].forEach(([c, oy, k]) => { ctx.fillStyle = C(c, dz); ctx.beginPath(); for (const [dx, dy, r] of o.blobs) { const cx = bx + (dx + oy) * s, cy = by - (dy + oy) * s, rr_ = Math.max(.3, r * k * s); ctx.moveTo(cx + rr_, cy); ctx.arc(cx, cy, rr_, 0, 6.2832); } ctx.fill(); });
+    }
+    function dFlower(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 46 || bx < -20 || bx > W + 20) return;
+      const sway = reduce ? 0 : Math.sin(T * 2 + o.ph) * .035, tx = bx + sway * s, ty = by - o.h * s;
+      if (dz < 26) { ctx.strokeStyle = C([72, 132, 62], dz); ctx.lineWidth = Math.max(1, .014 * s); line(bx, by, tx, ty); }
+      ctx.fillStyle = C(o.c, dz); circle(tx, ty, .055 * s); ctx.fill();
+      if (dz < 14) { ctx.fillStyle = 'rgba(250,200,60,.95)'; circle(tx, ty, .02 * s); ctx.fill(); }
+    }
+    function dGrass(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 30 || bx < -20 || bx > W + 20) return;
+      const sway = reduce ? 0 : Math.sin(T * 1.7 + o.ph) * .06;
+      ctx.strokeStyle = C(o.c, dz); ctx.lineWidth = Math.max(1, .016 * s); ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let k = -1; k <= 1; k++) { ctx.moveTo(bx + k * .04 * s, by); ctx.quadraticCurveTo(bx + (k * .06) * s, by - o.h * .6 * s, bx + (k * .1 + sway) * s, by - o.h * (1 - Math.abs(k) * .2) * s); }
+      ctx.stroke();
+    }
+    function panels(A, B, Cc, D, dz, sd) {
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
+        const g = reduce ? 0 : Math.pow(Math.max(0, Math.sin(T * .6 + i * .8 + j * .5 + sd)), 14);
+        sub(A, B, Cc, D, .05 + i * .225, .25 + i * .225, .1 + j * .42, .46 + j * .42, C(mix3([46, 82, 150], [206, 230, 255], g * .7), dz), dz < 60 ? 'rgba(214,232,255,.6)' : null);
+      }
+    }
+    function dCottage(o) {
+      const dzc = o.zc - camZ; if (dzc > 280 || dzc < -4) return;
+      const { x, w, d, wh, rh } = o, x0 = x - w / 2, x1 = x + w / 2, z0 = o.z, z1 = o.z + d, dz = Math.max(1, dzc), ln = lineCol(dz);
+      const F = [
+        [[x0, 0, z0], [x1, 0, z0], [x1, wh, z0], [x, rh, z0], [x0, wh, z0]],
+        [[x1, 0, z1], [x0, 0, z1], [x0, wh, z1], [x, rh, z1], [x1, wh, z1]],
+        [[x0, 0, z1], [x0, 0, z0], [x0, wh, z0], [x0, wh, z1]],
+        [[x1, 0, z0], [x1, 0, z1], [x1, wh, z1], [x1, wh, z0]],
+      ];
+      if (dz < 150) { const b = pr(x, 0, (z0 + z1) / 2); if (b) shadow(b, w * .75, dz, .14); }
+      const vis = F.map((v) => poly(v, C(sc3(o.wall, shadeOf(v)), dz), true, ln));
+      const e = .35, zo = .4, ey = wh - .18;
+      const L0 = [x0 - e, ey, z0 - zo], L1 = [x0 - e, ey, z1 + zo], R0 = [x1 + e, ey, z0 - zo], R1 = [x1 + e, ey, z1 + zo], T0 = [x, rh, z0 - zo], T1 = [x, rh, z1 + zo];
+      const rL = [L1, L0, T0, T1], rR = [R0, R1, T1, T0];
+      const solar = [62, 74, 98], moss = [104, 152, 80];
+      const vL = poly(rL, C(sc3(o.solarL ? solar : moss, shadeOf(rL)), dz), true, ln);
+      const vR = poly(rR, C(sc3(o.solarL ? moss : solar, shadeOf(rR)), dz), true, ln);
+      if (dz < 130) {
+        if (vL && o.solarL) panels(L0, L1, T1, T0, dz, o.seed); else if (vR && !o.solarL) panels(R0, R1, T1, T0, dz, o.seed);
+        const green = o.solarL ? (vR ? [R0, R1, T1, T0] : null) : (vL ? [L0, L1, T1, T0] : null);
+        if (green && dz < 80) { ctx.fillStyle = C([128, 186, 92], dz); for (const [u, v] of o.plants) { const q = [0, 1, 2].map((i) => green[0][i] + (green[1][i] - green[0][i]) * u + (green[3][i] - green[0][i]) * v); const p = pr(q[0], q[1] + .12, q[2]); if (p) { circle(p[0], p[1], .28 * p[2]); ctx.fill(); } } }
+      }
+      if (vis[0] && dz < 120) {
+        const zf = z0 - .02, A = [x0, 0, zf], B = [x1, 0, zf], Cc = [x1, wh, zf], D = [x0, wh, zf];
+        const glow = smooth(clamp((P - .6) / .3, 0, 1)), glass = C(mix3([170, 214, 236], [255, 204, 122], glow), dz);
+        sub(A, B, Cc, D, .41, .59, 0, .68, C(o.door, dz), ln);
+        sub(A, B, Cc, D, .1, .3, .42, .78, glass, 'rgba(255,255,255,.9)');
+        sub(A, B, Cc, D, .7, .9, .42, .78, glass, 'rgba(255,255,255,.9)');
+        sub(A, B, Cc, D, .08, .32, .34, .41, C([120, 86, 58], dz)); sub(A, B, Cc, D, .68, .92, .34, .41, C([120, 86, 58], dz));
+        sub(A, B, Cc, D, .09, .31, .41, .46, C([96, 168, 82], dz)); sub(A, B, Cc, D, .69, .91, .41, .46, C([236, 128, 150], dz));
+        const c = pr(x, (wh + rh) / 2 + .05, zf);
+        if (c) { ctx.fillStyle = glass; circle(c[0], c[1], .33 * c[2]); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, .05 * c[2]); ctx.stroke(); }
+      }
+      const sideVis = o.solarL ? vis[2] : vis[3];
+      if (o.vine && sideVis && dz < 90) {
+        const xs = o.solarL ? x0 - .05 : x1 + .05;
+        for (const [dy, dzz, r] of o.vines) { const p = pr(xs, dy, z0 + dzz); if (!p) continue; ctx.fillStyle = C(dy > 1.8 ? [120, 184, 90] : [76, 146, 70], dz); circle(p[0], p[1], r * p[2]); ctx.fill(); }
+      }
+    }
+    function dSolarTree(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 200) return;
+      shadow(b, 1.5, dz, .14);
+      ctx.strokeStyle = C([96, 100, 104], dz); ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, .16 * s);
+      line(bx, by, bx, by - o.h * .8 * s);
+      const leaves = [[-1.3, 3.6, -.5], [1.2, 4.0, .45], [-.7, 5.0, -.25], [.8, 5.4, .3], [0, 6.0, 0]];
+      ctx.lineWidth = Math.max(1, .07 * s);
+      for (const [lx, ly] of leaves) line(bx, by - (ly - 1.2) * s, bx + lx * s, by - ly * s);
+      for (const [lx, ly, a] of leaves) {
+        const g = reduce ? 0 : Math.pow(Math.max(0, Math.sin(T * .7 + lx + o.ph)), 12);
+        ctx.fillStyle = C(mix3([46, 84, 150], [200, 226, 255], g * .6), dz);
+        ctx.beginPath(); ctx.ellipse(bx + lx * s, by - ly * s, .95 * s, .42 * s, a, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = C([233, 169, 44], dz); ctx.lineWidth = Math.max(1, .05 * s); ctx.stroke();
+      }
+    }
+    function dTurbine(o) {
+      const b = pr(o.x, o.y0, o.z), hub = pr(o.x, o.y0 + o.h, o.z); if (!b || !hub) return;
+      const s = b[2], dz = b[3], col = C([248, 250, 246], dz), sh = C([214, 222, 218], dz);
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(b[0] - .035 * o.h * s, b[1]); ctx.lineTo(b[0] + .035 * o.h * s, b[1]); ctx.lineTo(hub[0] + .016 * o.h * s, hub[1]); ctx.lineTo(hub[0] - .016 * o.h * s, hub[1]); ctx.closePath(); ctx.fill();
+      const a0 = (reduce ? 0 : T * .9) + o.ph, Lb = .48 * o.h * s, wd = .03 * o.h * s;
+      for (let k = 0; k < 3; k++) {
+        const a = a0 + k * 2.0944, ca = Math.cos(a), sa = Math.sin(a);
+        ctx.fillStyle = k ? col : sh; ctx.beginPath();
+        ctx.moveTo(hub[0] - sa * wd, hub[1] + ca * wd); ctx.lineTo(hub[0] + ca * Lb, hub[1] + sa * Lb); ctx.lineTo(hub[0] + sa * wd * .5, hub[1] - ca * wd * .5); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = sh; circle(hub[0], hub[1], .035 * o.h * s); ctx.fill();
+    }
+    function dDome(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 260) return;
+      const R = o.r * s;
+      shadow(b, o.r * 1.05, dz, .12);
+      ctx.fillStyle = C([92, 160, 80], dz);
+      for (const [px, py, pr_] of o.plants) { circle(bx + px * R, by - py * R, pr_ * R); ctx.fill(); }
+      ctx.fillStyle = `rgba(222,244,246,${(.42 * (1 - fogA(dz) * .6)).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(bx, by, R, R, 0, Math.PI, 2 * Math.PI); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${(.85 * (1 - fogA(dz))).toFixed(3)})`; ctx.lineWidth = Math.max(1, .05 * s);
+      for (let k = -3; k <= 3; k++) { ctx.beginPath(); if (k === 0) { ctx.moveTo(bx, by); ctx.lineTo(bx, by - R); } else ctx.ellipse(bx, by, R * Math.abs(k) / 3.2, R, 0, Math.PI, 2 * Math.PI); ctx.stroke(); }
+      for (let j = 1; j <= 3; j++) { const y = j / 4, hw = R * Math.sqrt(1 - y * y); line(bx - hw, by - y * R, bx + hw, by - y * R); }
+      ctx.strokeStyle = C([120, 130, 130], dz); ctx.lineWidth = Math.max(1, .1 * s); line(bx - R, by, bx + R, by);
+    }
+    function dPerson(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 170 || bx < -60 || bx > W + 60) return;
+      const h = o.h, k = h * s, X = (m) => bx + m * k, Y = (m) => by - m * k;
+      shadow(b, .32 * h, dz, .22);
+      ctx.lineCap = 'round';
+      const sit = o.sit ? .2 : 0;
+      if (!o.sit) { ctx.strokeStyle = C(o.pants, dz); ctx.lineWidth = Math.max(1, .09 * k); line(X(-.055), Y(.46), X(-.06), Y(.03)); line(X(.055), Y(.46), X(.06), Y(.03)); }
+      ctx.fillStyle = C(o.shirt, dz); rr(X(-.15), Y(.82 - sit), .3 * k, .4 * k, .08 * k); ctx.fill();
+      ctx.strokeStyle = C(sc3(o.shirt, .92), dz); ctx.lineWidth = Math.max(1, .07 * k);
+      line(X(-.13), Y(.76 - sit), X(-.19), Y(.5 - sit));
+      let hx = .19, hy = .5 - sit;
+      if (o.anim === 'wave' && !reduce) { const a = Math.sin(T * 6 + o.ph); hx = .27 + a * .05; hy = 1.0; }
+      else if (o.anim === 'kite') { hx = .25; hy = .95; }
+      else if (o.anim === 'work') { hx = .12; hy = .55 + (reduce ? 0 : Math.sin(T * 3 + o.ph) * .04); }
+      line(X(.13), Y(.76 - sit), X(hx), Y(hy));
+      ctx.fillStyle = C(o.skin, dz); circle(X(0), Y(.9 - sit), .085 * k); ctx.fill();
+      ctx.fillStyle = C(o.hair, dz);
+      if (o.back) { circle(X(0), Y(.91 - sit), .09 * k); ctx.fill(); }
+      else { ctx.beginPath(); ctx.arc(X(0), Y(.915 - sit), .09 * k, Math.PI, 0); ctx.fill(); }
+      if (o.hat) { ctx.fillStyle = C([232, 202, 124], dz); ctx.beginPath(); ctx.ellipse(X(0), Y(.975 - sit), .17 * k, .035 * k, 0, 0, 6.2832); ctx.fill(); rr(X(-.08), Y(1.05 - sit), .16 * k, .08 * k, .03 * k); ctx.fill(); }
+    }
+    function dRobot(o) {
+      const mv = reduce ? 0 : Math.sin(T * .45 + o.ph) * o.mv;
+      const b = pr(o.x + mv, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 170) return;
+      const bob = reduce ? 0 : Math.sin(T * 4 + o.ph) * .025, X = (m) => bx + m * s, Y = (m) => by - m * s;
+      shadow(b, .45, dz, .22);
+      ctx.fillStyle = C([74, 86, 90], dz); rr(X(-.38), Y(.2), .76 * s, .2 * s, .08 * s); ctx.fill();
+      ctx.fillStyle = C([246, 242, 228], dz); rr(X(-.32), Y(.74 + bob), .64 * s, .54 * s, .16 * s); ctx.fill();
+      ctx.fillStyle = C([92, 160, 90], dz); ctx.fillRect(X(-.32), Y(.5 + bob), .64 * s, .07 * s);
+      ctx.fillStyle = C([246, 242, 228], dz); ctx.beginPath(); ctx.ellipse(X(0), Y(.88 + bob), .24 * s, .17 * s, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = C([70, 206, 196], dz); rr(X(-.16), Y(.92 + bob), .32 * s, .08 * s, .04 * s); ctx.fill();
+      ctx.strokeStyle = C([90, 100, 100], dz); ctx.lineWidth = Math.max(1, .025 * s); line(X(0), Y(1.03 + bob), X(.05), Y(1.22 + bob));
+      ctx.fillStyle = C([110, 180, 80], dz); ctx.beginPath(); ctx.ellipse(X(.1), Y(1.25 + bob), .09 * s, .045 * s, -.5, 0, 6.2832); ctx.fill();
+      if (o.basket) {
+        ctx.fillStyle = C([168, 120, 70], dz); rr(X(-.25), Y(.52 + bob), .5 * s, .2 * s, .05 * s); ctx.fill();
+        ctx.fillStyle = C([226, 84, 64], dz); circle(X(-.1), Y(.55 + bob), .06 * s); ctx.fill(); circle(X(.08), Y(.56 + bob), .06 * s); ctx.fill();
+        ctx.fillStyle = C([246, 170, 50], dz); circle(X(-.01), Y(.59 + bob), .06 * s); ctx.fill();
+      }
+    }
+    function dStall(o) {
+      const dz = o.zc - camZ; if (dz < -2 || dz > 180) return; const dzz = Math.max(1, dz), ln = lineCol(dzz);
+      const { x, z } = o;
+      drawBox(boxFaces(x - 1.4, x + 1.4, 0, .95, z, z + .9), [176, 124, 80], dzz, ln);
+      const crates = [[-1, [226, 84, 64]], [-.2, [246, 170, 50]], [.6, [110, 176, 70]]];
+      for (const [cx, col] of crates) { drawBox(boxFaces(x + cx, x + cx + .6, .95, 1.2, z + .1, z + .6), [150, 104, 64], dzz, ln); const p = pr(x + cx + .3, 1.26, z + .3); if (p) { ctx.fillStyle = C(col, dzz); for (let i = -1; i <= 1; i++) { circle(p[0] + i * .14 * p[2], p[1], .09 * p[2]); ctx.fill(); } } }
+      ctx.strokeStyle = C([120, 86, 56], dzz); ctx.lineWidth = Math.max(1, .06 * (f / dzz));
+      for (const [px, pz] of [[x - 1.5, z], [x + 1.5, z]]) { const a = pr(px, 0, pz), t = pr(px, 2.3, pz); if (a && t) line(a[0], a[1], t[0], t[1]); }
+      const A = [x - 1.7, 2.3, z - .45], B = [x + 1.7, 2.3, z - .45], Cc = [x + 1.7, 2.65, z + 1.3], D = [x - 1.7, 2.65, z + 1.3];
+      for (let i = 0; i < 8; i++) sub(A, B, Cc, D, i / 8, (i + 1) / 8, 0, 1, C(i % 2 ? [250, 248, 238] : [233, 169, 44], dzz));
+      for (let i = 0; i < 8; i++) { const p = pr(x - 1.7 + (i + .5) * 3.4 / 8, 2.3, z - .45); if (p) { ctx.fillStyle = C(i % 2 ? [250, 248, 238] : [233, 169, 44], dzz); ctx.beginPath(); ctx.arc(p[0], p[1], 3.4 / 16 * p[2], 0, Math.PI); ctx.fill(); } }
+    }
+    function dShelter(o) {
+      const dz = o.z - camZ; if (dz < -3 || dz > 200) return; const dzz = Math.max(1, dz), ln = lineCol(dzz), { x, z } = o;
+      poly([[x - 1.8, .1, z + 1.2], [x + 1.8, .1, z + 1.2], [x + 1.8, 2.5, z + 1.2], [x - 1.8, 2.5, z + 1.2]], `rgba(214,240,246,${(.55 * (1 - fogA(dzz))).toFixed(3)})`, false, ln);
+      drawBox(boxFaces(x - 1.4, x + 1.4, .42, .52, z + .5, z + 1), [168, 120, 76], dzz, ln);
+      ctx.strokeStyle = C([96, 104, 110], dzz); ctx.lineWidth = Math.max(1, .07 * (f / dzz));
+      for (const [px, pz] of [[x - 1.8, z - .2], [x + 1.8, z - .2], [x - 1.8, z + 1.2], [x + 1.8, z + 1.2]]) { const a = pr(px, 0, pz), t = pr(px, 2.6, pz); if (a && t) line(a[0], a[1], t[0], t[1]); }
+      drawBox(boxFaces(x - 2.1, x + 2.1, 2.6, 2.78, z - .5, z + 1.5), [62, 74, 98], dzz, ln);
+      sub([x - 2.1, 2.6, z - .52], [x + 2.1, 2.6, z - .52], [x + 2.1, 2.78, z - .52], [x - 2.1, 2.78, z - .52], 0, 1, 0, 1, C([233, 169, 44], dzz));
+    }
+    function dSign(o) {
+      const b = pr(o.x, 0, o.z); if (!b) return; const [bx, by, s, dz] = b; if (dz > 120) return;
+      ctx.fillStyle = C([128, 92, 60], dz); ctx.fillRect(bx - .05 * s, by - 2 * s, .1 * s, 2 * s);
+      ctx.fillStyle = C([233, 169, 44], dz); ctx.beginPath(); ctx.moveTo(bx, by - 1.85 * s); ctx.lineTo(bx + .9 * s, by - 1.85 * s); ctx.lineTo(bx + 1.05 * s, by - 1.7 * s); ctx.lineTo(bx + .9 * s, by - 1.55 * s); ctx.lineTo(bx, by - 1.55 * s); ctx.fill();
+      ctx.fillStyle = C([96, 170, 220], dz); ctx.beginPath(); ctx.moveTo(bx, by - 1.45 * s); ctx.lineTo(bx - .85 * s, by - 1.45 * s); ctx.lineTo(bx - 1 * s, by - 1.3 * s); ctx.lineTo(bx - .85 * s, by - 1.15 * s); ctx.lineTo(bx, by - 1.15 * s); ctx.fill();
+    }
+    function dPost(o) {
+      const a = pr(o.x, 0, o.z), b = pr(o.x2, 0, o.z2); if (!a) return; const s = a[2], dz = a[3]; if (dz > 90) return;
+      ctx.fillStyle = C([150, 110, 72], dz); ctx.fillRect(a[0] - .05 * s, a[1] - 1 * s, .1 * s, 1 * s);
+      if (b) { ctx.strokeStyle = C([168, 126, 84], dz); ctx.lineWidth = Math.max(1, .05 * s); for (const y of [.5, .9]) line(a[0], a[1] - y * s, b[0], b[1] - y * b[2]); }
+    }
+    function dTrack() {
+      const dz = TZ - camZ; if (dz < -3 || dz > 280) return; const dzz = Math.max(1, dz);
+      poly([[camX - 400, .01, TZ - 1.7], [camX + 400, .01, TZ - 1.7], [camX + 400, .01, TZ + 1.7], [camX - 400, .01, TZ + 1.7]], C([190, 180, 158], dzz));
+      if (dz < 120) for (let x = Math.floor(camX - 40); x < camX + 40; x += 1.2) poly([[x, .02, TZ - 1.15], [x + .25, .02, TZ - 1.15], [x + .25, .02, TZ + 1.15], [x, .02, TZ + 1.15]], C([128, 100, 78], dzz));
+      for (const zz of [TZ - .72, TZ + .72]) poly([[camX - 400, .06, zz - .05], [camX + 400, .06, zz - .05], [camX + 400, .06, zz + .05], [camX - 400, .06, zz + .05]], C([150, 152, 160], dzz));
+      // the solar tram (only while it is still ahead of you)
+      if (dz < 2) return;
+      const head = pathX(TZ) + (reduce ? 34 : ((T * 11) % 360) - 180), ln = lineCol(dzz);
+      const cars = [0, 1, 2, 3].map((i) => head - i * 10.6 - 10).sort((a, b) => Math.abs(b + 5 - camX) - Math.abs(a + 5 - camX));
+      for (const xa of cars) {
+        const xb = xa + 10, vis = drawBox(boxFaces(xa, xb, .55, 3.3, TZ - 1.35, TZ + 1.35), [248, 244, 228], dzz, ln);
+        drawBox(boxFaces(xa + .3, xb - .3, 3.3, 3.55, TZ - 1.2, TZ + 1.2), [62, 74, 98], dzz, ln);
+        if (vis.front) {
+          const fz = TZ - 1.37, A = [xa, .55, fz], B = [xb, .55, fz], Cc = [xb, 3.3, fz], D = [xa, 3.3, fz];
+          sub(A, B, Cc, D, 0, 1, .18, .3, C([42, 127, 62], dzz));
+          sub(A, B, Cc, D, 0, 1, .3, .34, C([233, 169, 44], dzz));
+          for (let i = 0; i < 5; i++) sub(A, B, Cc, D, .06 + i * .19, .19 + i * .19, .45, .8, C([170, 214, 236], dzz), 'rgba(255,255,255,.9)');
+          for (const wx of [xa + 1.6, xb - 1.6]) { const p = pr(wx, .5, fz); if (p) { ctx.fillStyle = C([60, 66, 70], dzz); circle(p[0], p[1], .42 * p[2]); ctx.fill(); } }
+        }
+      }
+    }
+    function dAirship(o) {
+      const x = o.x + (reduce ? 0 : Math.sin(T * o.sp) * 26), c = pr(x, o.y, o.z); if (!c) return; const [cx, cy, s, dz] = c;
+      const rx = 10 * s, ry = 3.4 * s, dir = Math.cos(T * o.sp) * o.sp >= 0 ? 1 : -1;
+      ctx.strokeStyle = C([110, 110, 110], dz); ctx.lineWidth = Math.max(1, .06 * s);
+      line(cx - 2 * s, cy + ry * .8, cx - 1.6 * s, cy + 4.4 * s); line(cx + 2 * s, cy + ry * .8, cx + 1.6 * s, cy + 4.4 * s);
+      ctx.fillStyle = C([233, 169, 44], dz); rr(cx - 2.6 * s, cy + 4.2 * s, 5.2 * s, 1.4 * s, .5 * s); ctx.fill();
+      ctx.fillStyle = C([170, 214, 236], dz); for (let i = 0; i < 4; i++) { rr(cx - 2.1 * s + i * 1.15 * s, cy + 4.5 * s, .7 * s, .55 * s, .2 * s); ctx.fill(); }
+      ctx.fillStyle = C([236, 232, 214], dz); ctx.beginPath(); ctx.moveTo(cx - dir * 8.5 * s, cy); ctx.lineTo(cx - dir * 12.5 * s, cy - 3.6 * s); ctx.lineTo(cx - dir * 11.5 * s, cy); ctx.lineTo(cx - dir * 12.5 * s, cy + 3.6 * s); ctx.closePath(); ctx.fill();
+      const g = ctx.createLinearGradient(cx, cy - ry, cx, cy + ry);
+      g.addColorStop(0, C([255, 254, 244], dz)); g.addColorStop(1, C([206, 204, 190], dz));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832); ctx.clip();
+      ctx.fillStyle = C([52, 86, 150], dz); ctx.fillRect(cx - rx, cy - ry, rx * 2, ry * .55);
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1, .05 * s);
+      for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.ellipse(cx + i * rx / 4, cy, rx / 10, ry, 0, 0, 6.2832); ctx.stroke(); }
+      ctx.restore();
+    }
+    function dKite(o) {
+      const kx = o.x + (reduce ? 0 : Math.sin(T * .8) * 1.5), ky = o.y + (reduce ? 0 : Math.cos(T * 1.1) * .8);
+      const k = pr(kx, ky, o.z), hd = pr(o.hx, 1.15, o.hz); if (!k) return; const [cx, cy, s, dz] = k;
+      if (hd) { ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hd[0], hd[1]); ctx.quadraticCurveTo((hd[0] + cx) / 2, Math.max(hd[1], cy) - (hd[1] - cy) * .2, cx, cy); ctx.stroke(); }
+      const w = .8 * s, hgt = 1.1 * s;
+      ctx.fillStyle = C([226, 116, 96], dz); ctx.beginPath(); ctx.moveTo(cx, cy - hgt); ctx.lineTo(cx + w, cy); ctx.lineTo(cx, cy + hgt * .8); ctx.lineTo(cx - w, cy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C([244, 190, 60], dz); ctx.beginPath(); ctx.moveTo(cx, cy - hgt); ctx.lineTo(cx + w, cy); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C([96, 170, 220], dz); ctx.lineWidth = Math.max(1, .05 * s); ctx.beginPath(); ctx.moveTo(cx, cy + hgt * .8);
+      for (let i = 1; i <= 6; i++) ctx.lineTo(cx + Math.sin(T * 3 + i) * .3 * s, cy + hgt * .8 + i * .45 * s); ctx.stroke();
+    }
+    function dLanterns(o) {
+      const dz0 = o.z - camZ; if (dz0 < -6 || dz0 > 200) return;
+      const bot = pr(o.a[0], 0, o.a[1]), ta = pr(o.a[0], 3.6, o.a[1]);
+      if (bot && ta) { ctx.strokeStyle = C([96, 80, 64], bot[3]); ctx.lineWidth = Math.max(1, .07 * bot[2]); line(bot[0], bot[1], ta[0], ta[1]); }
+      const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; const p = pr(lerp(o.a[0], o.b[0], t), 3.5 - Math.sin(Math.PI * t) * .7, lerp(o.a[1], o.b[1], t)); if (p) pts.push(p); }
+      if (pts.length < 2) return;
+      ctx.strokeStyle = 'rgba(70,60,50,.6)'; ctx.lineWidth = Math.max(1, .6 * dpr); ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+      const glow = smooth(clamp((P - .62) / .25, 0, 1));
+      for (let i = 2; i < pts.length - 1; i += 2) {
+        const p = pts[i], r = Math.max(1.5, .14 * p[2]);
+        ctx.fillStyle = `rgb(255,${200 + 30 * glow | 0},${110 + 40 * glow | 0})`; circle(p[0], p[1] + r, r); ctx.fill();
+        if (glow > .05) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55 * glow; const R = r * 6; ctx.drawImage(glowSprite, p[0] - R, p[1] + r - R, R * 2, R * 2); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+      }
+    }
+    function dBench(o) {
+      const dz = o.z - camZ; if (dz < -1 || dz > 150) return; const dzz = Math.max(1, dz), ln = lineCol(dzz), { x, z } = o;
+      drawBox(boxFaces(x - .95, x + .95, .42, .5, z, z + .45), [176, 124, 80], dzz, ln);
+      const b0 = o.near ? z - .08 : z + .4, b1 = o.near ? z : z + .48;
+      drawBox(boxFaces(x - .95, x + .95, .5, .95, b0, b1), [160, 112, 72], dzz, ln);
+    }
+    const PAINT = { tree: dTree, cypress: dCypress, bush: dBush, flower: dFlower, grass: dGrass, cottage: dCottage, solartree: dSolarTree, turbine: dTurbine, dome: dDome, person: dPerson, robot: dRobot, stall: dStall, shelter: dShelter, sign: dSign, post: dPost, track: dTrack, airship: dAirship, kite: dKite, lanterns: dLanterns, bench: dBench };
+
+    // =====================================================================
+    // SCENE
+    // =====================================================================
+    const hillN = (x, s) => .5 + .22 * Math.sin(x * 1.1 + s) + .16 * Math.sin(x * 2.3 + s * 1.7) + .08 * Math.sin(x * 5.2 + s * 2.9) + .04 * Math.sin(x * 11 + s);
+    const HILLS = [
+      { amp: .06, base: .006, par: .0016, seed: 1, col: [126, 172, 160], k: .4 },
+      { amp: .075, base: .004, par: .004, seed: 4, col: [102, 160, 106], k: .62 },
+      { amp: .052, base: -.01, par: .009, seed: 7, col: [88, 150, 80], k: .8 },
+    ];
+    const ALP = [[1.3, .62, .4], [2.9, .3, 1.7], [6.1, .15, 2.9], [13, .06, .3]];
+    const ridgeN = (x) => { let y = 0; for (const [fq, a, s0] of ALP) y += a * Math.pow(1 - Math.abs(Math.sin(x * fq + s0)), 2.2); return y; };
+    function drawAlps() {                       // the snow-capped Alps on the horizon; their snow retreats in the heat
+      const base = hor - H * .012, amp = H * .36, yAt = (x) => base - amp * ridgeN(x / W * 3.2 + camX * .0008 + 11);
+      ctx.beginPath(); ctx.moveTo(0, hor + 4);
+      for (let x = 0; x <= W + 6; x += 5 * dpr) ctx.lineTo(x, yAt(x));
+      ctx.lineTo(W, hor + 4); ctx.closePath();
+      ctx.fillStyle = rgb(withTint(mix3(K.haze, [96, 116, 146], .68))); ctx.fill();
+      ctx.save(); ctx.clip();
+      const snowY = base - amp * lerp(.2, .9, DRY);
+      ctx.fillStyle = rgb(withTint(mix3(K.haze, [250, 252, 255], .8)));
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      for (let x = 0; x <= W + 6; x += 6 * dpr) ctx.lineTo(x, snowY + Math.sin(x * .03 / dpr) * H * .012 + Math.sin(x * .011 / dpr + 2) * H * .01);
+      ctx.lineTo(W, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(60,80,110,.18)';                       // shaded faces
+      ctx.beginPath(); ctx.moveTo(0, hor + 4);
+      for (let x = 0; x <= W + 6; x += 5 * dpr) ctx.lineTo(x, yAt(x) + Math.max(0, Math.sin(x * .02 / dpr + 1)) * H * .05);
+      ctx.lineTo(W, hor + 4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    function lowerBound(z) { let lo = 0, hi = objs.length; while (lo < hi) { const m = (lo + hi) >> 1; if (objs[m].zc < z) lo = m + 1; else hi = m; } return lo; }
+    const withTint = (c0) => { const c = dryC(c0); return [c[0] * tint[0], c[1] * tint[1], c[2] * tint[2]]; };
+
+    function draw() {
+      K = keyAt(P);
+      if (HEAT.k > 0) { const HK = keyFrom(HOTK, HEAT.s); for (const k of ['top', 'hor', 'haze', 'sun', 'tint']) K[k] = mix3(K[k], HK[k], HEAT.k); }
+      haze = K.haze; tint = K.tint;
+      // sky
+      const g = ctx.createLinearGradient(0, 0, 0, hor); g.addColorStop(0, rgb(K.top)); g.addColorStop(1, rgb(K.hor));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, hor + 2);
+      // sun, glow and soft rays
+      let sx = W * lerp(.74, .56, P), sy = lerp(H * .14, hor - H * .03, smooth(clamp((P - .45) / .55, 0, 1))), sunR = H * .042;
+      if (HEAT.k > 0) { sx = lerp(sx, W * .58, HEAT.k); sy = lerp(sy, lerp(H * .1, hor - H * .004, HEAT.s), HEAT.k); sunR = lerp(sunR, H * .065, HEAT.k); }
+      const sun = K.sun.map((v) => v | 0).join(',');
+      const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * .55 * (1 + HEAT.k * .5));
+      sg.addColorStop(0, `rgba(${sun},.75)`); sg.addColorStop(.2, `rgba(${sun},.25)`); sg.addColorStop(1, `rgba(${sun},0)`);
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, W, hor + 2);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .045; ctx.fillStyle = rgb(K.sun);
+      for (let i = 0; i < 7; i++) { const a = i / 7 * 6.2832 + (reduce ? 0 : T * .02); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(a - .05) * W, sy + Math.sin(a - .05) * W); ctx.lineTo(sx + Math.cos(a + .05) * W, sy + Math.sin(a + .05) * W); ctx.fill(); }
+      ctx.restore();
+      ctx.fillStyle = rgb(mix3(K.sun, [255, 255, 255], .4)); circle(sx, sy, sunR); ctx.fill();
+      // clouds
+      const cl = mix3([255, 255, 255], K.hor, .22), cs = mix3(cl, K.top, .3);
+      for (const c of clouds) {
+        const px = (((c.x + (reduce ? 0 : T * .0035 * c.sp)) % 1.4) - .2) * W - camX * W * .0015, py = c.y * hor - P * H * .04 * c.s, k = H * .034 * c.s * (1 + P * .3);
+        for (const [col, oy] of [[cs, .25], [cl, 0]]) { ctx.fillStyle = rgb(col); ctx.beginPath(); for (const [bx, by, br] of c.blobs) { const cx = px + bx * k, cy = py + (by + oy) * k; ctx.moveTo(cx + br * k, cy); ctx.arc(cx, cy, br * k, 0, 6.2832); } ctx.fill(); }
+      }
+      // birds
+      if (!reduce && T > nextFlock) { flocks.push({ t0: T, y: rnd(.1, .3) * hor, dir: Math.random() < .5 ? 1 : -1, sp: W * rnd(.035, .06), b: Array.from({ length: 4 + (Math.random() * 4 | 0) }, (_, i) => [i * rnd(.6, 1.1), (i % 2 ? 1 : -1) * i * .4, rnd(0, 6)]) }); nextFlock = T + rnd(9, 16); }
+      flocks = flocks.filter((fl) => (T - fl.t0) * fl.sp < W * 1.4);
+      ctx.strokeStyle = 'rgba(40,62,60,.55)'; ctx.lineWidth = 1.6 * dpr; ctx.lineCap = 'round';
+      for (const fl of flocks) {
+        const x0 = fl.dir > 0 ? -W * .1 + (T - fl.t0) * fl.sp : W * 1.1 - (T - fl.t0) * fl.sp, u = H * .011;
+        for (const [dx, dy, ph] of fl.b) { const x = x0 - fl.dir * dx * u * 3, y = fl.y + dy * u * 2, w = Math.sin(T * 9 + ph); ctx.beginPath(); ctx.moveTo(x - u, y - w * u * .6); ctx.quadraticCurveTo(x - u * .4, y - u * .2, x, y); ctx.quadraticCurveTo(x + u * .4, y - u * .2, x + u, y - w * u * .6); ctx.stroke(); }
+      }
+      // hills (far turbines stand between the farthest ridge and the nearer ones)
+      drawAlps();
+      HILLS.forEach((hl, i) => {
+        ctx.fillStyle = rgb(withTint(mix3(K.haze, hl.col, hl.k)));
+        ctx.beginPath(); ctx.moveTo(0, hor + 4);
+        for (let x = 0; x <= W + 8; x += 8 * dpr) ctx.lineTo(x, hor - H * (hl.base + hl.amp * (1 + P * .2 * i) * hillN(x / W * 4 + camX * hl.par + i, hl.seed)));
+        ctx.lineTo(W, hor + 4); ctx.closePath(); ctx.fill();
+        if (i === 0) for (const t of far) dTurbine(t);
+      });
+      // ground
+      const gg = ctx.createLinearGradient(0, hor, 0, H);
+      gg.addColorStop(0, rgb(withTint(mix3(K.haze, [150, 196, 112], .6)))); gg.addColorStop(1, rgb(withTint([100, 166, 70])));
+      ctx.fillStyle = gg; ctx.fillRect(0, hor, W, H - hor);
+      ctx.globalAlpha = .55;
+      for (const p of patches) { const dz = p.z - camZ; if (dz < p.r + 1 || dz > 230) continue; const b = pr(p.x, 0, p.z); const rx = p.r * b[2]; ctx.fillStyle = C(p.c, dz); ctx.beginPath(); ctx.ellipse(b[0], b[1], rx, Math.min(rx, rx * camY / dz), 0, 0, 6.2832); ctx.fill(); }
+      ctx.globalAlpha = 1;
+      // fields with crop rows
+      for (const fd of fields) {
+        if (fd.z1 < camZ + NEAR || fd.z0 - camZ > 260) continue;
+        const dz = Math.max(1, (fd.z0 + fd.z1) / 2 - camZ);
+        const base = fd.kind === 'wheat' ? [226, 192, 98] : fd.kind === 'lavender' ? [118, 150, 88] : [138, 104, 70];
+        const row = fd.kind === 'wheat' ? [202, 160, 70] : fd.kind === 'lavender' ? [162, 124, 206] : [92, 164, 72];
+        poly([[fd.x0, .005, fd.z0], [fd.x1, .005, fd.z0], [fd.x1, .005, fd.z1], [fd.x0, .005, fd.z1]], C(base, dz));
+        for (let x = fd.x0 + .4; x < fd.x1 - .3; x += 1) poly([[x, .01, fd.z0 + .3], [x + .5, .01, fd.z0 + .3], [x + .5, .01, fd.z1 - .3], [x, .01, fd.z1 - .3]], C(row, dz));
+      }
+      // village square
+      if (PC.z - camZ < 280 && PC.z + PC.r > camZ) {
+        const dz = Math.max(1, PC.z - camZ), ring = (r) => Array.from({ length: 40 }, (_, i) => [PC.x + Math.cos(i / 40 * 6.2832) * r, .008, PC.z + Math.sin(i / 40 * 6.2832) * r]);
+        poly(ring(PC.r), C([224, 210, 176], dz)); poly(ring(PC.r * .55), C([232, 220, 190], dz));
+      }
+      // the path
+      for (const [a, b] of [[0, 18], [18, 70], [70, 260]]) {
+        const zs = []; for (let i = 0; i <= 24; i++) zs.push(camZ + NEAR + .02 + a + (b - a) * Math.pow(i / 24, 1.6));
+        const l = zs.map((z) => [pathX(z) - PW / 2, .004, z]), r = zs.map((z) => [pathX(z) + PW / 2, .004, z]).reverse();
+        poly(l.concat(r), C([218, 194, 146], (a + b) / 2));
+      }
+      for (const st of stones) {
+        const dz = st.z - camZ; if (dz < NEAR + .2 || dz > 40) continue;
+        const b = pr(pathX(st.z) + st.dx, 0, st.z), rx = st.r * b[2], ry = Math.min(rx, rx * camY / dz * 1.3);
+        ctx.fillStyle = C([238, 224, 192], dz); ctx.beginPath(); ctx.ellipse(b[0], b[1], rx, ry, 0, 0, 6.2832); ctx.fill();
+      }
+      // everything standing up, far to near
+      const lo = lowerBound(camZ - 8), hi = lowerBound(camZ + 340);
+      for (let i = hi - 1; i >= lo; i--) { const o = objs[i]; PAINT[o.type](o); }
+      // floating pollen near you (and fireflies at dusk): they drift past as you walk
+      const dusk = smooth(clamp((P - .7) / .25, 0, 1));
+      ctx.globalCompositeOperation = 'lighter';
+      for (const m of motes) {
+        let dz = m.z - camZ;
+        if (dz < NEAR + .15 || dz > 46) { m.z = camZ + rnd(4, 44); m.x = camX + rnd(-11, 11); m.y = rnd(.3, 4.5); dz = m.z - camZ; }
+        if (!reduce) { m.x += Math.sin(T * .7 + m.ph) * .004; m.y += .0012 + Math.sin(T + m.ph) * .002; }
+        const b = pr(m.x, m.y, m.z); if (!b) continue;
+        const blink = dusk > 0 ? .4 + .6 * Math.max(0, Math.sin(T * 2.4 + m.ph * 3)) : 1;
+        const r = clamp(.05 * b[2], 1.2 * dpr, 26 * dpr), a = .55 * (1 - fogA(dz)) * Math.min(1, dz / 1.5) * blink;
+        ctx.globalAlpha = a; ctx.drawImage(glowSprite, b[0] - r, b[1] - r, r * 2, r * 2);
+        if (dusk > .05) { ctx.globalAlpha = a * dusk; ctx.fillStyle = 'rgb(220,255,140)'; circle(b[0], b[1], r * .25); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      // heat: the air shimmers above the ground and the light turns orange
+      if (HEAT.k > .05) {
+        if (!reduce) {
+          shx.clearRect(0, 0, W, H); shx.drawImage(cv, 0, 0);
+          const amp = 4.5 * dpr * HEAT.k * (1 - .4 * HEAT.s), band = Math.max(2, Math.round(3 * dpr));
+          for (let y = Math.floor(hor - H * .14); y < H; y += band) {
+            const fo = Math.exp(-(((y - hor) / (H * .18)) ** 2)), off = (Math.sin(y * .05 / dpr + T * 7) + .5 * Math.sin(y * .013 / dpr - T * 3)) * amp * fo;
+            if (Math.abs(off) > .3) ctx.drawImage(shimC, 0, y, W, band, off, y, W, band);
+          }
+        }
+        const hg = ctx.createLinearGradient(0, 0, 0, H);
+        hg.addColorStop(0, `rgba(255,170,90,${(.1 * HEAT.k).toFixed(3)})`); hg.addColorStop(1, `rgba(255,86,30,${(.2 * HEAT.k * (.6 + .4 * HEAT.s)).toFixed(3)})`);
+        ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
+      }
+      // soft vignette, a little deeper at dusk
+      const vg = ctx.createRadialGradient(W / 2, H * .55, H * .35, W / 2, H * .55, Math.max(W, H) * .8);
+      vg.addColorStop(0, 'rgba(20,50,30,0)'); vg.addColorStop(1, `rgba(20,50,30,${(.18 + dusk * .12).toFixed(3)})`);
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+      if (fadeIn < 1) { ctx.fillStyle = `rgba(255,252,240,${(1 - fadeIn).toFixed(3)})`; ctx.fillRect(0, 0, W, H); }
+    }
+
+    // =====================================================================
+    // PAGE: layout, scroll, cards, navigation
+    // =====================================================================
+    const journey = $('#journey'), intro = $('#intro'), introSub = $('#introSub'), h1 = $('#introH1'), cue = $('#cue'), nav = $('#sitenav'), bar = $('#bar'), railEl = $('#rail');
+    const cards = [...document.querySelectorAll('.chap')].map((el) => ({ el, z: Number(el.dataset.z), hold: el.hasAttribute('data-hold') }));
+    const railBtns = [...railEl.querySelectorAll('button')];
+    const h1Words = (() => {
+      const txt = h1.textContent.trim(); h1.setAttribute('aria-label', txt); h1.textContent = '';
+      return txt.split(/\s+/).map((w) => { const s = document.createElement('span'); s.className = 'w'; s.setAttribute('aria-hidden', 'true'); s.textContent = w; h1.appendChild(s); return s; });
+    })();
+    let vw = 0, vh = 0, jTop = 0, jLen = 1, maxScroll = 1;
+    function layout() {
+      vw = innerWidth; vh = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt((mobile ? 3.2e6 : 5.6e6) / (vw * vh)));   // native Retina sharpness, capped near 4K
+      cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr); W = cv.width; H = cv.height; shimC.width = W; shimC.height = H;
+      f = Math.max(W * .62, H * .9); hor = H * .43;
+      jTop = journey.getBoundingClientRect().top + scrollY; jLen = Math.max(1, journey.offsetHeight - vh);
+      eTop = earth.getBoundingClientRect().top + scrollY; eLen = Math.max(1, earth.offsetHeight - vh);
+      hTop = heatSec.getBoundingClientRect().top + scrollY; hLen = Math.max(1, heatSec.offsetHeight - vh);
+      gdpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt((mobile ? 3e6 : 5.6e6) / (vw * vh)));      // native Retina sharpness for the globe
+      for (const c of [gcv, air, stars, erDust]) { c.width = Math.round(vw * gdpr); c.height = Math.round(vh * gdpr); }
+      drawStars();
+      if (glacierC) { glacierC.width = Math.round((glacierC.clientWidth || 360) * gdpr); glacierC.height = Math.round(120 * gdpr); }
+      maxScroll = Math.max(1, root.scrollHeight - vh);
+    }
+    addEventListener('resize', layout);
+    addEventListener('load', layout);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+    const zToScroll = (z) => jTop + clamp(z / L, 0, 1) * jLen;
+    railBtns.forEach((b) => b.addEventListener('click', () => scrollTo({ top: zToScroll(Number(b.dataset.z)), behavior: reduce ? 'auto' : 'smooth' })));
+
+    function ui(t) {
+      // the first view has no text; the headline arrives as you start walking
+      const wp = clamp((camZ - 8) / 16, 0, 1);
+      const out = 1 - smooth(clamp((camZ - 36) / 9, 0, 1));
+      h1Words.forEach((w, i) => {
+        const k = reduce ? 1 : smooth(clamp(wp * (h1Words.length + 1.5) - i, 0, 1));
+        w.style.opacity = k.toFixed(3);
+        w.style.transform = reduce ? 'none' : `translate3d(0, ${((1 - k) * 60).toFixed(1)}px, ${((1 - k) * -220).toFixed(1)}px) rotateX(${((1 - k) * -70).toFixed(1)}deg)`;
+      });
+      const so = reduce ? 1 : smooth(clamp((camZ - 18) / 8, 0, 1));
+      introSub.style.opacity = so.toFixed(3); introSub.style.transform = `translateY(${((1 - so) * 24).toFixed(1)}px)`;
+      const io = reduce ? out : out * (camZ > 3 ? 1 : 0);
+      intro.style.opacity = io.toFixed(3); intro.style.visibility = io < .01 ? 'hidden' : 'visible';
+      for (const c of cards) {
+        let o = smooth(clamp((camZ - (c.z - 16)) / 8, 0, 1));
+        if (!c.hold) o *= 1 - smooth(clamp((camZ - (c.z + 10)) / 8, 0, 1));
+        c.el.style.setProperty('--o', o.toFixed(3)); c.el.style.visibility = o < .01 ? 'hidden' : 'visible';
+      }
+      let cur = 0; railBtns.forEach((b, i) => { if (camZ >= Number(b.dataset.z) - 22) cur = i; });
+      railBtns.forEach((b, i) => { if (i === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+      const inJ = sy >= jTop && sy < jTop + jLen + vh * .3;
+      railEl.style.opacity = (inJ ? smooth(clamp((camZ - 2) / 4, 0, 1)) : 0).toFixed(3);
+      railEl.style.visibility = inJ && camZ > 2 ? 'visible' : 'hidden';
+      cue.style.opacity = reduce ? 0 : (clamp((t - 2) / .6, 0, 1) * (1 - smooth(clamp((sy - eTop) / (vh * .15), 0, 1)))).toFixed(3);
+      const pp = clamp((sy - eTop) / eLen, 0, 1);
+      for (const c of eCards) {
+        const o = smooth(clamp((pp - c.a) / .05, 0, 1)) * (1 - smooth(clamp((pp - c.b) / .05, 0, 1)));
+        c.el.style.setProperty('--o', o.toFixed(3)); c.el.style.visibility = o < .01 ? 'hidden' : 'visible';
+      }
+      const hp = clamp((sy - hTop) / hLen, 0, 1);
+      for (const c of hCards) {
+        const o = smooth(clamp((hp - c.a) / .05, 0, 1)) * (1 - smooth(clamp((hp - c.b) / .05, 0, 1)));
+        c.el.style.setProperty('--o', o.toFixed(3)); c.el.style.visibility = o < .01 ? 'hidden' : 'visible';
+      }
+      for (const c of counters) {
+        const pr_ = c.el.closest('#heat') ? hp : pp, k = smooth(clamp((pr_ - c.a) / c.d, 0, 1));
+        const txt = c.pre + lerp(c.from, c.to, k).toFixed(c.dec) + c.suf;
+        if (c.el.textContent !== txt) c.el.textContent = txt;
+      }
+      const tho = smooth(clamp((sy - hTop + vh * .2) / (vh * .3), 0, 1)) * (1 - smooth(clamp((hp - .86) / .06, 0, 1)));
+      thermo.style.opacity = tho.toFixed(3); thermo.style.visibility = tho < .01 ? 'hidden' : 'visible';
+      if (tho > .01) updateThermo(hp);
+      const inSpace = sy < eTop + eLen;
+      nav.classList.toggle('space', sy < eTop + eLen * .95);
+      const scene = inSpace ? 'space' : sy < jTop ? 'heat' : 'walk';
+      if (scene !== sceneNow) { document.body.dataset.scene = scene; sceneNow = scene; }
+      const no = 1;
+      nav.style.opacity = no.toFixed(3); nav.style.visibility = no < .02 ? 'hidden' : 'visible';
+      nav.classList.toggle('clear', sy < jTop + jLen);
+      bar.style.transform = `scaleX(${clamp(sy / maxScroll, 0, 1)})`;
+    }
+
+    let sy = scrollY, t0 = performance.now(), fadeIn = 1, lastStep = -1, lastNow = 0;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      if (root.classList.contains('appopen')) { if (window.CLSound) CLSound.burn(0); return; }
+      const t = (now - t0) / 1000; T = reduce ? 0 : t;
+      fadeIn = 1;
+      const dt = Math.min(.05, (now - (lastNow || now)) / 1000); lastNow = now;
+      const target = scrollY;
+      sy = reduce ? target : sy + (target - sy) * .075;
+      if (Math.abs(target - sy) < .05) sy = target;
+      scrollVel = target - sy;
+      P = clamp((sy - jTop) / jLen, 0, 1);
+      const hp = clamp((sy - hTop) / hLen, 0, 1), inHeat = sy < jTop;
+      camZ = inHeat ? hp * 6 : P * L;          // in the heatwave you stand at the start of the path and creep forward
+      if (inHeat) { const hs = heatState(hp); HEAT.k = hs.k; HEAT.s = hs.s; DRY = hs.k * (.55 + .45 * hs.s); } else { HEAT.k = 0; HEAT.s = 0; DRY = 0; }
+      const stride = reduce ? 0 : Math.abs(Math.sin(camZ * 2.2));
+      camX = pathX(camZ) * .92 + (reduce ? 0 : Math.sin(camZ * 1.1) * .035);
+      camY = 1.62 - stride * .045 + (reduce ? 0 : Math.sin(t * .8) * .012);
+      const step = Math.floor(camZ / 1.428);
+      if (step !== lastStep) { if (lastStep >= 0 && Math.abs(target - sy) > 1.5 && window.CLSound) CLSound.step(); lastStep = step; }
+      // prologue in space, then a white cloud fade into the valley
+      const pp = clamp((sy - eTop) / eLen, 0, 1), endE = eTop + eLen;
+      if (sy < endE) {
+        space.style.visibility = 'visible'; drawPrologue(pp, t, dt);
+        if (!banged && lastPP >= 0 && lastPP < .233 && pp >= .233 && pp < .3 && window.CLSound) { CLSound.bigBang(); banged = true; }   // the planet bursts, the name appears
+        if (pp < .2) banged = false;
+        lastPP = pp;
+      }
+      else space.style.visibility = 'hidden';
+      if (window.CLSound) CLSound.burn(sy < endE && !root.classList.contains('appopen') ? burnLvl : 0);
+      const endH = hTop + hLen; let wOp, wCol;
+      if (sy < endE) {
+        const bang = .96 * smooth(clamp((pp - .229) / .005, 0, 1)) * (1 - smooth(clamp((pp - .236) / .03, 0, 1)));   // the planet bursts
+        const sun = .7 * smooth(clamp((pp - .545) / .012, 0, 1)) * (1 - smooth(clamp((pp - .558) / .02, 0, 1)));    // flying past the Sun
+        wOp = Math.max(bang, sun, smooth(clamp((pp - .958) / .034, 0, 1))); wCol = pp < .4 ? '#fff4e2' : pp < .8 ? '#fffaf0' : '#ffd9b4';
+      }
+      else if (sy < hTop) { wOp = 1 - smooth(clamp((sy - endE) / (vh * .4), 0, 1)); wCol = '#ffd9b4'; }
+      else if (sy < endH) { wOp = smooth(clamp((hp - .9) / .08, 0, 1)); wCol = '#0c1626'; }             // night falls after the hot sunset
+      else { wOp = 1 - smooth(clamp((sy - endH) / (vh * .4), 0, 1)); wCol = '#0c1626'; }                 // and a new, green morning begins
+      whiteEl.style.opacity = wOp.toFixed(3); if (whiteEl.dataset.c !== wCol) { whiteEl.style.background = wCol; whiteEl.dataset.c = wCol; }
+      if (sy > endE - vh * .5 && sy < jTop + jLen + vh * 1.2) { draw(); postProcess(); }
+      ui(t);
+    }
+
+    // =====================================================================
+    // PROLOGUE: Earth from space. CO2 rides the wind belts, heat and ice warnings,
+    // then the camera turns to Europe and zooms into Germany, through the clouds, into the valley.
+    // Continents are simplified, hand-drawn outlines (lon, lat), good enough for an illustrated globe.
+    // =====================================================================
+    const LAND = [
+      // North America
+      [[-168,66],[-162,70],[-156,71.3],[-140,69.6],[-128,70],[-115,68.5],[-100,68],[-95,71],[-85,69],[-82,66],[-88,64],[-93,61],[-94,58.5],[-88,56.5],[-82,55],[-79,52],[-77,56],[-78,60],[-73,62],[-65,60.5],[-61,56],[-56,52],[-59,48],[-66,45],[-70,43],[-70,41.5],[-74,40.5],[-76,38],[-75.5,35.3],[-78,33.8],[-81,31.5],[-80,27],[-80.4,25.2],[-81.8,26.5],[-83,29.5],[-85,29.8],[-89,30.2],[-91,29.3],[-94,29.6],[-97,27.8],[-97.5,25],[-97.7,22],[-96,19],[-94.5,18.2],[-91,18.6],[-90.5,21],[-87,21.5],[-88,18],[-88.5,15.8],[-84,15.8],[-83.4,12],[-83.7,10.5],[-81.5,8.8],[-79.5,9.5],[-77.5,8.5],[-78,7.2],[-80.5,7.3],[-83,8.3],[-86,11],[-87.7,13],[-91.5,14],[-94.5,16],[-97,15.8],[-100,17],[-105.5,20],[-105.7,23],[-109,25.8],[-112.5,29.8],[-114.8,31.5],[-114,28],[-111.5,25.5],[-110,23],[-112,24.5],[-114.5,27.5],[-116,30],[-117.2,32.6],[-118.5,34],[-120.6,34.6],[-122.5,37.5],[-124,40.5],[-124.5,43],[-124,46.5],[-124.7,48.4],[-123,49],[-125,50],[-128,51],[-130.5,54.5],[-133,57],[-137,58.6],[-140,59.8],[-145,60.4],[-150,59.5],[-152,58.3],[-156,57.3],[-159,55.9],[-163,54.8],[-158,58.2],[-162,58.7],[-164.5,60.3],[-165.5,62],[-164.5,63.2],[-161,64.5],[-166.5,64.6]],
+      // Greenland
+      [[-73,78],[-66,81],[-50,82.5],[-30,83.4],[-20,82],[-18,79],[-20,75],[-22,72],[-24,69],[-32,67.8],[-38,65.6],[-42,62],[-44,60],[-48,61.5],[-51,64],[-53,67],[-54,70],[-56,72.5],[-60,75.5],[-66,76.5]],
+      // Canadian Arctic islands
+      [[-62,66.6],[-65,64],[-70,62.6],[-74,64.6],[-78,64.4],[-80,68],[-85,69.8],[-88,70],[-90,72],[-80,73.8],[-75,72.6],[-68,70],[-66,67]],
+      [[-120,71],[-105,73],[-100,77],[-95,79],[-85,80.5],[-75,82.7],[-62,82.5],[-70,79],[-78,76.5],[-90,74.5],[-100,72],[-110,70],[-118,69]],
+      // Caribbean
+      [[-84.9,21.9],[-82,23.1],[-79,22.8],[-76,21.2],[-74.2,20.2],[-77.5,19.9],[-78.7,21.6],[-81.8,22.2]],
+      [[-74.4,18.5],[-72.8,19.9],[-70,19.7],[-68.4,18.6],[-71.6,17.8]],
+      // South America
+      [[-77.5,8.5],[-75,10.8],[-72,11.8],[-70,12.2],[-66,10.6],[-62,10.7],[-60,8.5],[-57,6],[-53,5.5],[-51,4],[-50,1.5],[-48.5,-1],[-44,-2.5],[-40,-3],[-37,-5],[-35,-7.5],[-35,-9.5],[-37,-12],[-39,-15],[-39.5,-19],[-41,-22],[-43,-23],[-46,-24],[-48.5,-26.5],[-49,-28.5],[-51,-31],[-53,-34],[-57,-35.5],[-57,-38],[-62,-39],[-64.5,-41],[-63.5,-42.7],[-65.5,-45],[-67.5,-46.5],[-66,-48],[-68.5,-50.5],[-69,-52],[-68.5,-54.5],[-71.5,-53.8],[-74,-52],[-75.5,-48],[-74,-44],[-73.6,-40],[-73.5,-37],[-71.6,-32],[-71.3,-28],[-70.6,-24],[-70.3,-18.5],[-72,-17],[-75.5,-15],[-77,-12],[-79,-8],[-81.2,-6],[-81,-4.2],[-80,-2.2],[-80.6,-.5],[-80,1],[-78.8,1.6],[-77.5,4],[-77.4,6.5]],
+      // Africa and Madagascar
+      [[-17,21],[-16.5,24],[-14.5,26.2],[-13,27.8],[-10,29.5],[-9.7,31.5],[-8.5,33.3],[-6,35.8],[-2,35.1],[2,36.6],[8,36.9],[10.3,37.2],[11,35.5],[10.5,34],[15,32.3],[19.5,30.5],[20.2,32.2],[25,31.7],[29,30.9],[32.3,31.3],[34.2,31.2],[34.5,28],[33.5,27],[35.5,24],[37.2,21],[38.5,18],[39.5,15.6],[41.5,13.5],[43.3,12.5],[44,10.4],[51,11.8],[51.2,10.4],[49.5,6.5],[47.5,4.5],[44,1],[41.5,-1.7],[39.5,-4.8],[39,-8.5],[40.4,-11],[40.6,-15],[37,-17.9],[35.3,-21.3],[35.5,-24],[32.8,-26.3],[32.5,-28.6],[30.6,-31.2],[27.5,-33.5],[25,-34],[22,-34.2],[19.6,-34.8],[18.3,-33.8],[17.6,-31],[16.5,-28.6],[15.2,-26.8],[14.4,-22.5],[11.8,-17.2],[12.3,-13.5],[13.6,-11.7],[12.3,-6.1],[11.8,-3.5],[9.5,-1],[9.4,2.5],[9.8,4],[8.5,4.5],[6,4.3],[4.5,6.3],[2,6.2],[-2,4.8],[-5,5.1],[-7.5,4.4],[-9.5,5.5],[-12,7.3],[-13.3,9],[-15,10.9],[-16.7,12.5],[-17.2,14.7],[-16.5,16.5],[-16.3,19]],
+      [[43.5,-12],[49.3,-12],[50.4,-15.5],[49.8,-17],[48.8,-20],[47.5,-24.8],[45.2,-25.5],[43.7,-23.6],[43.3,-21],[44.4,-18.2],[44,-16],[46.5,-15.7],[47.8,-14]],
+      // Eurasia
+      [[-9,37],[-8.9,38.7],[-9.5,40.8],[-8.8,42],[-9.3,43.2],[-7.5,43.8],[-4,43.5],[-1.5,43.4],[-1.2,46],[-2.2,47.2],[-4.6,48.4],[-1.9,48.7],[-1.3,49.7],[.2,49.5],[1.5,50.2],[2.5,51.1],[4,51.6],[4.7,52.9],[6.8,53.4],[8.5,53.6],[8.6,55],[8.1,56.6],[10,57.6],[10.6,56.4],[10.3,55],[12.4,54.4],[14.2,53.9],[18,54.8],[19.6,54.4],[21,55],[21.1,56.8],[23.9,57],[24.4,58.3],[23.4,59.3],[28,59.6],[29.8,60.1],[26.5,60.4],[22.9,60],[21.4,61.5],[21.5,63.2],[25,65],[24.2,65.8],[22,65.6],[20.3,63.6],[17.5,62.2],[17.2,60.6],[18.9,59.8],[16.5,57.5],[16,56.2],[14.2,55.4],[12.8,55.6],[11.3,58.3],[10.6,59.1],[8.2,58.1],[5.6,58.9],[5,61],[5.3,62.4],[8.5,63.6],[10.5,64.5],[13,66.6],[15,68.3],[17.5,69.5],[21,70.2],[25.8,71.1],[28.5,70.8],[31,70.3],[33,69.3],[38,68],[41,67.3],[38.5,66],[34.6,66.2],[35,64.4],[37,63.8],[40.5,64.6],[44,66.2],[43.5,68.5],[46,67.8],[53,68.6],[59,68.5],[60.8,69.8],[66,69.5],[68.5,68.2],[69,72.8],[72.8,72.4],[72,66.6],[73.5,68.4],[75,72],[78,72.4],[80.6,73.6],[87,74.8],[96,76],[105,77.6],[110,76.6],[113.5,73.7],[119,73],[128,72.4],[130.5,70.9],[140,72.2],[150,71.4],[160,69.6],[170,70],[180,68.8],[180,65],[178,64.6],[177,62.5],[173,61.7],[170,60],[164,59.9],[163,58.5],[162,56],[160,52.9],[156.7,51],[156,53.5],[156,57.5],[158,57.9],[155,59.4],[151,59.2],[143,59.4],[138,56.6],[136.5,54],[141.5,53],[140.5,48.8],[138,46.3],[135,43.4],[132,43.2],[130,42.5],[129.5,40],[128.4,38.6],[129.4,35.5],[126.5,34.4],[126.2,37.7],[125,39.6],[121.6,38.9],[121.2,40.8],[118,39.2],[119.2,37.2],[122.5,36.9],[120.4,36],[119.2,34.6],[120.9,32],[122,30],[120.5,27.2],[119.5,25.5],[117,23.6],[113.6,22.2],[110.5,20.8],[109.8,21.5],[108,21.6],[106.7,20.4],[105.7,18.7],[107.5,16.4],[109.3,13.4],[109.2,11.6],[106.8,10.4],[105,8.7],[104.8,10.4],[103,11.6],[100.9,12.8],[100,13.4],[99.2,10],[100.4,7.2],[101.3,6.8],[103.4,4],[103.5,1.4],[101,2.8],[98.8,8],[98.3,10.8],[97.6,16.5],[95.3,15.8],[94.2,16],[94.4,18.8],[92.4,20.8],[91.8,22.3],[90.3,21.8],[88.9,21.7],[86.9,20.8],[85,19.4],[82.4,17],[80.2,15.4],[80.3,13],[79.9,10.3],[78.2,8.9],[77.5,8.1],[76.6,9],[75.9,11],[74.7,13],[73.5,16],[72.8,19],[72.6,21.3],[70.5,20.9],[68.9,22.6],[67.4,23.9],[66.6,25.4],[61.6,25.2],[57.3,25.8],[56.3,27.2],[54,26.7],[51.6,27.9],[50.1,30.2],[48.5,29.9],[48,29.3],[50,26.3],[51.6,25.8],[51.6,24.3],[54,24.2],[56.4,26.4],[56.4,24.9],[58.8,23.5],[59.8,22.3],[58.5,20.4],[57,18.9],[55.4,17.6],[52.2,15.6],[49,14.6],[45,13],[43.2,12.7],[42.8,15.3],[42.6,16.8],[40.9,19.5],[39,21.7],[38.4,24],[36.5,26.5],[35,28.2],[34.6,29.5],[34.2,31.2],[34.9,32.8],[35.9,35],[36.2,36.6],[34.6,36.8],[32.5,36.1],[30,36.2],[28.2,36.7],[26.4,38.2],[26.6,39.5],[26.2,40.4],[29,41.1],[33,42],[36,41.7],[38.4,40.9],[41.5,41.5],[40,43.5],[38,44.6],[36.6,45.3],[35,45],[33.6,44.5],[32.6,45.4],[33.6,46.1],[31,46.6],[30.3,45.6],[29.6,45.2],[28.6,44.2],[27.9,42.4],[28,41.6],[26.4,40.9],[24,40.8],[22.6,40.4],[23.9,38.3],[22.7,37.6],[23,36.5],[21.7,36.8],[21.1,38.3],[19.6,40.6],[19.4,41.9],[18.5,42.5],[16,43.5],[13.6,45.1],[12.3,45.4],[12.4,44.2],[13.6,43.5],[16,41.4],[18.5,40.2],[17,39],[16.5,38],[15.6,38],[16,39.5],[15.7,40],[14.4,40.6],[12,41.9],[10.5,42.9],[10.1,44],[8.8,44.4],[7.5,43.8],[6.2,43.1],[4.6,43.4],[3,43.2],[3.2,41.9],[.8,41],[-.3,39.3],[.2,38.7],[-.7,37.6],[-2.1,36.7],[-4.4,36.7],[-5.6,36],[-6.4,36.8],[-7.4,37.2]],
+      // European islands
+      [[-5.7,50],[-3,50.6],[1.4,51.2],[1.7,52.7],[.2,53.4],[-.4,54.5],[-1.6,55.6],[-2.1,57],[-1.8,57.6],[-4,57.6],[-3,58.6],[-5,58.6],[-6.2,57.5],[-5.6,56.3],[-6.2,55.5],[-4.8,54.8],[-3.2,54.6],[-3,53.4],[-4.6,53.3],[-4.2,52.3],[-5.2,51.7],[-3,51.4]],
+      [[-6,52.2],[-6.2,53.5],[-6,54.3],[-5.5,55.2],[-7.4,55.4],[-8.5,54.6],[-10,53.9],[-9.5,52.5],[-10.3,51.8],[-8.5,51.6]],
+      [[-24,65.5],[-22,66.4],[-18,66.2],[-15,66.5],[-13.5,65.1],[-14.5,64.4],[-18,63.4],[-22,63.8]],
+      [[11,78],[16,77],[22,78],[27,80.2],[20,80.6],[12,79.8]],
+      [[52,71.5],[56,73],[58,75.8],[68,76.8],[64,75.4],[56,72]],
+      [[12.4,38],[15.6,38.2],[15.1,36.7],[12.5,37.6]], [[8.4,39],[9.6,39.2],[9.8,41],[8.2,41],[8.4,40]], [[8.6,41.4],[9.4,41.4],[9.5,43],[8.6,42.4]],
+      [[23.5,35.3],[26.3,35.3],[26,35],[24,35.1]], [[32.3,35],[34.6,35.6],[33.8,34.8],[32.6,34.7]],
+      // Asia and the Pacific
+      [[130,31.3],[131,32.8],[132,33.9],[135,34.6],[136.8,34.3],[139,34.9],[140.9,35.7],[141,38.3],[142,39.5],[141.4,41.4],[140,40.2],[139.8,38.5],[138.5,37.5],[136.8,37.2],[135.5,35.7],[132.6,35.5],[130.9,34.2],[129.8,33]],
+      [[140,41.5],[141.2,41.8],[143.3,42],[145.6,43.3],[144.5,44],[141.8,45.4],[141.4,43.4],[140,42.5]],
+      [[79.8,6.2],[81.9,7],[81.3,8.6],[80.2,9.8],[79.9,8.2]],
+      [[120.6,18.5],[122.3,18.4],[122,16.6],[124,13.8],[123.5,12.8],[121.5,13.8],[120.6,14.5],[120.1,16.4]],
+      [[122,7],[124,7.4],[126.6,7.4],[126,9.2],[125.4,9.8],[123.6,8.6],[122,8]],
+      [[109,1.5],[110,1.8],[111.8,2.9],[113.5,4.2],[115.5,5.4],[117.2,6.9],[119.2,5.3],[118,4.3],[117.6,1.5],[116.6,-1.5],[116,-3.8],[114.5,-3.9],[111.6,-3.4],[110.2,-2.8],[109,-.3]],
+      [[95.3,5.6],[97.5,5.2],[100.4,2.3],[104.3,-.6],[106,-3],[105.8,-5.8],[104.5,-5.9],[102.3,-4],[100.3,-.8],[98.6,1.8]],
+      [[105.2,-6.8],[106.6,-6],[108.5,-6.4],[111,-6.4],[112.7,-6.9],[114.5,-7.8],[114.4,-8.7],[111,-8.2],[108,-7.8],[106.4,-7.4]],
+      [[119.4,-5.5],[120.4,-5.5],[121,-2.7],[123.2,-1],[121.3,1.2],[124.9,1.5],[120.2,.5],[119.7,-.8],[118.8,-2.8]],
+      [[131,-1.2],[134,-.9],[137.8,-1.5],[141,-2.6],[145,-4.5],[147.5,-6],[147.8,-8.2],[150,-10.6],[146,-8.4],[143.5,-9],[141,-9.1],[139,-8.2],[138,-5.6],[135.2,-4.4],[132.4,-4],[131,-2.8]],
+      // Australia and New Zealand
+      [[113.4,-22],[114,-26],[115,-30],[115,-33.5],[117,-35],[120,-34],[123.5,-34],[126,-32.3],[131,-31.5],[134.2,-32.6],[135.8,-34.8],[137.6,-33.4],[137.4,-35.6],[139.6,-36],[140,-38],[143.5,-38.8],[146.3,-39.1],[148,-37.8],[150,-37.4],[150.6,-35],[151.7,-32.8],[153.1,-30.3],[153.5,-28],[153,-25.3],[151,-23.5],[149.5,-22.3],[148,-20],[146.2,-18.6],[145.4,-16],[145.2,-14.7],[143.6,-14],[142.5,-10.7],[141.5,-13.5],[141.6,-16.7],[140.5,-17.6],[139,-17],[136.8,-16],[135.5,-14.8],[136.8,-12.2],[133,-11.2],[130.3,-12.3],[129.4,-14.8],[127,-13.8],[125,-14.7],[122.3,-17],[121.4,-19.4],[118.8,-20.4],[116.6,-20.8],[114.6,-21.8]],
+      [[144.6,-40.7],[148.3,-40.9],[148,-43.2],[146.8,-43.6],[145.2,-42.3]],
+      [[172.7,-34.4],[174.7,-36.7],[176,-37.6],[178.5,-37.7],[177,-39.3],[176.8,-40],[175.2,-41.6],[174.6,-41.3],[175,-39.8],[173.8,-39.2],[174.6,-38],[174.3,-36.4]],
+      [[172.7,-40.5],[174,-41.3],[173.9,-42.3],[172.7,-43.6],[171.3,-44.3],[170.6,-45.9],[169,-46.6],[166.5,-46],[167,-44.8],[170,-43.2],[171.5,-41.8]],
+    ];
+    const CASPIAN = [[47,45],[49,46.5],[51.5,47],[53.5,45.5],[51,44.6],[51.5,42],[53,41],[54,37.4],[50.5,37],[49,38.3],[49.5,40.3],[48,42],[47.6,43.8]];
+    const GERMANY = [[6.1,50.8],[6,51.85],[6.8,52],[7,52.6],[7.2,53.3],[8.4,53.6],[8.8,54],[8.6,54.9],[9.4,54.8],[10,54.6],[11,54],[12.4,54.4],[14.2,53.9],[14.4,53.3],[14.1,52.9],[14.7,52.1],[15,51.1],[14.3,51],[12.5,50.4],[12.1,50.3],[12.5,49.7],[13.8,48.8],[13,48.3],[13,47.5],[12.2,47.7],[10.9,47.5],[10.2,47.3],[9.6,47.5],[8.6,47.6],[7.6,47.6],[7.6,48.1],[8.2,48.97],[6.4,49.2],[6.4,49.8],[6.1,50.1]];
+    const ALPS = [[5.8,45],[6.6,44.1],[7.6,44.2],[8.6,45.6],[10.5,46],[12.4,46.3],[13.8,46.4],[15.8,47.2],[15.9,47.9],[13.5,47.8],[11.4,47.5],[9.9,47.5],[8.2,47],[6.8,46.6],[6,46.2]];
+    // regions that emit a lot of CO2 (lat, lon, weight): where the glowing trails start
+    const HOT = [[32,117,3],[38,115,2.4],[23,113,1.6],[25,80,2.2],[19,73,1],[50,8,1.8],[52,-1,.9],[45,10,.8],[40,-78,1.8],[42,-88,1.2],[35,-118,1.2],[30,-95,1],[27,50,1.2],[35,138,1],[37,127,.8],[55,38,1],[-23,-46,.7],[-26,28,.7],[13,100,.6],[6,3,.5],[-6,107,.6]];
+    const HOTW = HOT.reduce((s, h) => s + h[2], 0);
+
+    const earth = $('#earth'), heatSec = $('#heat'), space = $('#space'), stars = $('#stars'), gcv = $('#globe'), air = $('#air'), actx = air.getContext('2d'), whiteEl = $('#white');
+    const eCards = [...document.querySelectorAll('#earth .ecard')].map((el) => ({ el, a: +el.dataset.a, b: +el.dataset.b }));
+    const hCards = [...document.querySelectorAll('#heat .ecard')].map((el) => ({ el, a: +el.dataset.a, b: +el.dataset.b }));
+    const counters = [...document.querySelectorAll('[data-count]')].map((el) => ({ el, to: +el.dataset.count, from: +(el.dataset.from || 0), a: +el.dataset.a, d: +(el.dataset.dur || .1), dec: +(el.dataset.dec || 0), pre: el.dataset.pre || '', suf: el.dataset.suf || '' }));
+    const glacierC = $('#glacier'), co2hud = $('#co2hud'), monthbar = $('#monthbar');
+    const thermo = $('#thermo'), thfill = $('#thfill'), thval = $('#thval'), thtime = $('#thtime');
+    let gl2 = null, GU = {}, densTex = null, globeProg = null, quadBuf = null, gLoc = 0, eTop = 0, eLen = 1, hTop = 0, hLen = 1, gdpr = 1, sceneNow = '';
+    const D2R = Math.PI / 180;
+
+    function buildMaps(maxTex) {
+      const HW = Math.min(mobile ? 2048 : 4096, maxTex), HH = HW / 2;
+      const mc = document.createElement('canvas'); mc.width = HW; mc.height = HH;
+      const m = mc.getContext('2d');
+      const X = (lo) => (lo + 180) / 360 * HW, Y = (la) => (90 - la) / 180 * HH;
+      const fillPoly = (pts, c) => { m.fillStyle = c; m.beginPath(); pts.forEach(([lo, la], i) => (i ? m.lineTo(X(lo), Y(la)) : m.moveTo(X(lo), Y(la)))); m.closePath(); m.fill(); };
+      m.fillStyle = '#000'; m.fillRect(0, 0, HW, HH);
+      m.globalCompositeOperation = 'lighter';
+      LAND.forEach((p) => fillPoly(p, '#f00'));
+      m.fillStyle = '#f00'; m.beginPath(); m.moveTo(0, HH);                       // Antarctica
+      for (let lo = -180; lo <= 180; lo += 4) m.lineTo(X(lo), Y(-69 + 3 * Math.sin(lo * D2R * 2) + 2 * Math.sin(lo * D2R * 5 + 1) + 6 * Math.exp(-(((lo + 62) / 6) ** 2))));
+      m.lineTo(HW, HH); m.closePath(); m.fill();
+      m.globalCompositeOperation = 'source-over'; fillPoly(CASPIAN, '#000');
+      m.globalCompositeOperation = 'lighter'; fillPoly(GERMANY, '#0f0'); fillPoly(ALPS, '#00f');
+      const hi = document.createElement('canvas'); hi.width = HW; hi.height = HH;
+      const h = hi.getContext('2d'); h.filter = 'blur(1.5px)'; h.drawImage(mc, 0, 0);
+      const lo = document.createElement('canvas'); lo.width = 1024; lo.height = 512;
+      const l = lo.getContext('2d'); l.filter = 'blur(2px)'; l.drawImage(hi, 0, 0, 1024, 512);
+      return { hi, lo };
+    }
+
+    // ---------- CO2: particles leave the big emitting regions and ride the wind belts; their density is the plume ----------
+    const NP = mobile ? 4000 : 9000;
+    const DW = mobile ? 256 : 512, DH = DW / 2;
+    const dens = document.createElement('canvas'); dens.width = DW; dens.height = DH;
+    const dctx = dens.getContext('2d');
+    const densB = document.createElement('canvas'); densB.width = DW; densB.height = DH;
+    const dbctx = densB.getContext('2d');
+    const pLat = new Float32Array(NP), pLon = new Float32Array(NP), pAge = new Float32Array(NP), pLife = new Float32Array(NP);
+    function spawnP(i, anywhere) {
+      let r = Math.random() * HOTW, h = HOT[0]; for (const c of HOT) { r -= c[2]; if (r <= 0) { h = c; break; } }
+      pLat[i] = h[0] + rnd(-2.5, 2.5); pLon[i] = h[1] + rnd(-3.5, 3.5);
+      pLife[i] = rnd(5, 13); pAge[i] = anywhere ? rnd(0, pLife[i]) : 0;
+    }
+    function wind(lat, lon, t) {
+      const a = Math.abs(lat), s = lat < 0 ? -1 : 1;
+      const u = 1.6 * Math.exp(-(((a - 45) / 13) ** 2)) - .9 * Math.exp(-((a / 15) ** 2)) - .5 * Math.exp(-(((a - 75) / 9) ** 2));
+      const v = .7 * Math.sin((lon * 3 + t * 8) * D2R + lat * .05) * Math.exp(-(((a - 50) / 16) ** 2)) + .35 * Math.sin((lon * 5 - t * 6) * D2R) * Math.exp(-(((a - 30) / 10) ** 2)) - .25 * s * Math.exp(-((a / 16) ** 2));
+      return [u * 6, v * 4];
+    }
+    function stepParticles(dt, t) {
+      for (let i = 0; i < NP; i++) {
+        pAge[i] += dt;
+        if (pAge[i] > pLife[i]) { spawnP(i, false); continue; }
+        const [u, v] = wind(pLat[i], pLon[i], t);
+        pLon[i] += (u + (Math.random() - .5) * 7) * dt / Math.max(.25, Math.cos(pLat[i] * D2R));
+        pLat[i] += (v + (Math.random() - .5) * 5) * dt;
+        if (pLon[i] > 180) pLon[i] -= 360; else if (pLon[i] < -180) pLon[i] += 360;
+        if (Math.abs(pLat[i]) > 84) spawnP(i, false);
+      }
+    }
+    for (let i = 0; i < NP; i++) spawnP(i, true);
+    for (let k = 0; k < 60; k++) stepParticles(.2, k * .2);                 // start with plumes already spread out
+    function splat() {
+      dctx.globalCompositeOperation = 'source-over'; dctx.fillStyle = 'rgba(0,0,0,.22)'; dctx.fillRect(0, 0, DW, DH);
+      dctx.globalCompositeOperation = 'lighter'; dctx.fillStyle = `rgba(255,255,255,${mobile ? .09 : .055})`;
+      const sx = DW / 360, sy = DH / 180, sz = mobile ? 2 : 3;
+      for (let i = 0; i < NP; i++) {
+        const fade = Math.min(1, pAge[i] * 2) * Math.min(1, (pLife[i] - pAge[i]) * .5);
+        if (fade < .2) continue;
+        dctx.fillRect((pLon[i] + 180) * sx - 1, (90 - pLat[i]) * sy - 1, sz * (1 + 1 / Math.max(.3, Math.cos(pLat[i] * D2R)) * .3), sz);
+      }
+      dbctx.clearRect(0, 0, DW, DH); dbctx.filter = `blur(${mobile ? 3 : 5}px)`; dbctx.drawImage(dens, 0, 0); dbctx.filter = 'none';
+    }
+
+    function initGlobe() {
+      try {
+        gl2 = gcv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
+        if (!gl2) return;
+        const sh = (type, src) => { const s = gl2.createShader(type); gl2.shaderSource(s, src); gl2.compileShader(s); if (!gl2.getShaderParameter(s, gl2.COMPILE_STATUS)) throw new Error(gl2.getShaderInfoLog(s)); return s; };
+        const pg = gl2.createProgram();
+        gl2.attachShader(pg, sh(gl2.VERTEX_SHADER, 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }'));
+        gl2.attachShader(pg, sh(gl2.FRAGMENT_SHADER, $('#globe-fs').textContent));
+        gl2.linkProgram(pg);
+        if (!gl2.getProgramParameter(pg, gl2.LINK_STATUS)) throw new Error(gl2.getProgramInfoLog(pg));
+        gl2.useProgram(pg); globeProg = pg;
+        const buf = gl2.createBuffer(); gl2.bindBuffer(gl2.ARRAY_BUFFER, buf); quadBuf = buf;
+        gl2.bufferData(gl2.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl2.STATIC_DRAW);
+        const loc = gl2.getAttribLocation(pg, 'aPos'); gLoc = loc; gl2.enableVertexAttribArray(loc); gl2.vertexAttribPointer(loc, 2, gl2.FLOAT, false, 0, 0);
+        for (const n of ['uC', 'uR', 'uLat', 'uLon', 'uTime', 'uHeat', 'uIce', 'uGlow', 'uAlpha', 'uHi', 'uLo', 'uMap', 'uDens', 'uPx', 'uMelt', 'uBlue']) GU[n] = gl2.getUniformLocation(pg, n);
+        const maps = buildMaps(gl2.getParameter(gl2.MAX_TEXTURE_SIZE) || 2048);
+        const tex = (unit, img) => {
+          const t = gl2.createTexture(); gl2.activeTexture(gl2.TEXTURE0 + unit); gl2.bindTexture(gl2.TEXTURE_2D, t);
+          gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, img);
+          gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR); gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR);
+          gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_S, gl2.REPEAT); gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE);
+          return t;
+        };
+        tex(0, maps.lo); tex(1, maps.hi); splat(); densTex = tex(2, densB);
+        gl2.uniform1i(GU.uLo, 0); gl2.uniform1i(GU.uMap, 1); gl2.uniform1i(GU.uDens, 2);
+      } catch (err) { gl2 = null; }
+    }
+
+    // ---------- camera on the globe ----------
+    let G = { lat0: 0, lon0: 0, cx: 0, cy: 0, R: 1, cL: 1, sL: 0, cA: 1, sA: 0 };
+    const lerpAngle = (a, b, t) => { const d = ((b - a + 540) % 360) - 180; return a + d * t; };
+    function proj(lat, lon, k) {        // lat/lon in degrees -> device px on the screen (null when on the far side)
+      const la = lat * D2R, lo = lon * D2R, cl = Math.cos(la);
+      const x = cl * Math.sin(lo), y = Math.sin(la), z = cl * Math.cos(lo);
+      const x1 = x * G.cL - z * G.sL, z1 = x * G.sL + z * G.cL;
+      const y2 = y * G.cA - z1 * G.sA, z2 = y * G.sA + z1 * G.cA;
+      if (z2 < .02) return null;
+      return [G.cx + x1 * G.R * k, G.cy - y2 * G.R * k, z2];
+    }
+    function rrOn(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+    function drawGlacier(m, t) {
+      const c = glacierC; if (!c || !c.width) return;
+      const g = c.getContext('2d'), w = c.width, h = c.height;
+      const sk = g.createLinearGradient(0, 0, 0, h); sk.addColorStop(0, '#9fd3f0'); sk.addColorStop(1, '#e6f4fb');
+      g.fillStyle = sk; g.fillRect(0, 0, w, h);
+      const peaks = [[0, h], [w * .08, h * .5], [w * .2, h * .62], [w * .36, h * .14], [w * .5, h * .46], [w * .64, h * .22], [w * .8, h * .55], [w * .92, h * .4], [w, h * .6], [w, h]];
+      const mount = () => { g.beginPath(); peaks.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+      mount(); g.fillStyle = '#7d8f9e'; g.fill();
+      g.save(); mount(); g.clip();
+      const snow = lerp(h * .62, h * .2, m);
+      g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, 0);
+      for (let x = 0; x <= w; x += w / 24) g.lineTo(x, snow + Math.sin(x * .09) * h * .04 + Math.sin(x * .23) * h * .02);
+      g.lineTo(w, 0); g.closePath(); g.fill();
+      g.restore();
+      g.strokeStyle = '#3aa0d8'; g.lineCap = 'round'; g.lineWidth = 1.5 + m * 5 * (w / 360);
+      g.beginPath(); g.moveTo(w * .36, snow + h * .02); g.quadraticCurveTo(w * .3, h * .8, w * .42, h); g.stroke();
+      g.fillStyle = '#3aa0d8';
+      for (let i = 0; i < 4; i++) { const yy = ((t * 40 + i * 30) % (h * .5)) + snow; g.beginPath(); g.arc(w * (.62 + i * .02), yy, 1.5 + m * 2, 0, 6.2832); g.fill(); }
+      const tx = w * .94, ty = h * .12, th = h * .7;
+      g.fillStyle = 'rgba(255,255,255,.9)'; rrOn(g, tx - 6, ty, 12, th, 6); g.fill();
+      g.fillStyle = '#e4572e'; const lvl = lerp(.3, .92, m); rrOn(g, tx - 3, ty + th * (1 - lvl), 6, th * lvl, 3); g.fill();
+      g.beginPath(); g.arc(tx, ty + th + 6, 9, 0, 6.2832); g.fill();
+    }
+    const warmSprite = (() => { const s = document.createElement('canvas'); s.width = s.height = 64; const x = s.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,226,196,1)'); g.addColorStop(.45, 'rgba(255,198,150,.55)'); g.addColorStop(1, 'rgba(255,180,120,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return s; })();
+    const diveClouds = Array.from({ length: 22 }, (_, i) => ({ a: i / 22 * 6.2832 + rnd(-.2, .2), d: rnd(.05, .5), s: rnd(.25, .55) }));
+    function drawStars() {
+      const g = stars.getContext('2d'), w = stars.width, h = stars.height;
+      g.clearRect(0, 0, w, h);
+      for (let i = 0; i < 420; i++) { g.fillStyle = `rgba(255,255,255,${rnd(.15, .8).toFixed(2)})`; const r = rnd(.3, 1.2) * gdpr; g.beginPath(); g.arc(rnd(0, w), rnd(0, h), r, 0, 6.2832); g.fill(); }
+    }
+
+    // =====================================================================
+    // OPENING (pp 0 – .58): dust veil, Earthrise seen from the Moon, the Earth overheats into a sun and
+    // bursts, the Carbon Pulse name appears, time rewinds the pieces into a galaxy, and the camera zooms
+    // through the galaxy back to Earth today. From pp .58 the original Earth story runs (o = 0..1).
+    // Foreground drawn on the #air canvas in a 1600 x 900 "slice" space, like the SVG dashboard it comes from.
+    // =====================================================================
+    let scrollVel = 0;
+    const logo = $('#novaLogo');
+    const erVeil = $('#erVeil'), erDust = $('#erDust'), erTitle = $('#erTitle'), erHud = $('#erHud'), erTemp = $('#erTemp'), erTempNote = $('#erTempNote'), erElev = $('#erElev');
+    const erSub1 = $('#erSub1'), erSub2 = $('#erSub2'), erGalaxy = $('#erGalaxy'), erEarth = $('#erEarth');
+    const dctx2 = erDust.getContext('2d');
+    function useProg(prog, loc) { gl2.useProgram(prog); gl2.bindBuffer(gl2.ARRAY_BUFFER, quadBuf); gl2.enableVertexAttribArray(loc); gl2.vertexAttribPointer(loc, 2, gl2.FLOAT, false, 0, 0); }
+    const range = (v, a, b) => clamp((v - a) / (b - a), 0, 1);
+    const eo = (x) => 1 - Math.pow(1 - x, 3);
+    const show = (el, o) => { el.style.opacity = o.toFixed(3); el.style.visibility = o < .01 ? 'hidden' : 'visible'; };
+    const mixc = (a, b, k) => `rgb(${Math.round(lerp(a[0], b[0], k))},${Math.round(lerp(a[1], b[1], k))},${Math.round(lerp(a[2], b[2], k))})`;
+
+    // dust motes over the veil
+    const dustMotes = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), r: .4 + Math.random() * 1.6, s: .3 + Math.random(), a: .2 + Math.random() * .6 }));
+
+    // the Moon foreground, as paths in slice space
+    const P2 = (d) => new Path2D(d);
+    const MOON = {
+      ridge: P2('M0 560 C 250 520 420 545 640 528 C 860 512 1040 548 1260 530 C 1420 518 1520 540 1600 535 L1600 900 L0 900 Z'),
+      ridgeTop: P2('M0 560 C 250 520 420 545 640 528 C 860 512 1040 548 1260 530 C 1420 518 1520 540 1600 535'),
+      rockL: P2('M0 0 L0 900 L120 900 L170 700 L110 520 L190 380 L120 200 L60 0 Z'),
+      rockR: P2('M1600 0 L1600 900 L1470 900 L1420 720 L1500 560 L1430 400 L1520 240 L1560 0 Z'),
+      rockT: P2('M0 0 L1600 0 L1600 40 L1380 70 L1100 40 L820 80 L520 38 L240 66 L0 40 Z'),
+      base: P2('M470 780 L520 690 L610 660 L700 668 L770 700 L830 780 Z'),
+      baseRim: P2('M520 690 L610 660 L700 668'),
+      arm: P2('M696 548 L728 590 L714 600 L690 568 Z'),
+      visor: P2('M684 498 Q696 500 696 512'),
+      ground: P2('M0 770 C 300 740 520 790 800 765 C 1080 740 1300 790 1600 755 L1600 900 L0 900 Z'),
+      groundTop: P2('M0 770 C 300 740 520 790 800 765 C 1080 740 1300 790 1600 755'),
+    };
+    const rrect = (x, y, w, h, r) => { const p = new Path2D(); p.moveTo(x + r, y); p.arcTo(x + w, y, x + w, y + h, r); p.arcTo(x + w, y + h, x, y + h, r); p.arcTo(x, y + h, x, y, r); p.arcTo(x, y, x + w, y, r); p.closePath(); return p; };
+    const SUIT = [rrect(598, 548, 26, 62, 8), rrect(632, 530, 64, 86, 18), rrect(640, 606, 22, 58, 9)];
+    const LEG2 = rrect(-11, 0, 22, 58, 9);
+    const HELMET = (() => { const p = new Path2D(); p.arc(672, 504, 26, 0, 6.2832); return p; })();
+    const SLICE = { s: 1, ox: 0, oy: 0, portrait: false };
+    function sliceFor(Wd, Hd) {
+      SLICE.portrait = Wd / Hd < .9;
+      if (!SLICE.portrait) { SLICE.s = Math.max(Wd / 1600, Hd / 900); SLICE.ox = (Wd - 1600 * SLICE.s) / 2; SLICE.oy = (Hd - 900 * SLICE.s) / 2; }
+      else { SLICE.s = Wd / 720; SLICE.ox = -590 * SLICE.s; SLICE.oy = Hd - 900 * SLICE.s * 1.02; }
+    }
+    // layer transform: scale sc about the screen centre, then move down by ty device px
+    function layerT(g, sc, ty, sh) {
+      const { s, ox, oy } = SLICE, cx = air.width / 2, cy = air.height / 2;
+      g.setTransform(s * sc, 0, 0, s * sc, cx * (1 - sc) + ox * sc + sh[0], cy * (1 - sc) + oy * sc + ty + sh[1]);
+    }
+    function drawMoon(g, sp, warm, sh) {
+      const vhp = air.height / 100, settle = eo(range(sp, 0, .5)), rim = eo(range(sp, .28, .58)), up = eo(range(sp, .36, .62)), gr = eo(range(sp, .34, .6)), exit = range(sp, .7, 1);
+      const LIT = [255, 168, 92];
+      // far ridge with craters, lit warmer as the Earth heats up
+      layerT(g, 1, (lerp(9, 0, settle) + exit * 70) * vhp, sh);
+      let lg = g.createLinearGradient(0, 512, 0, 900);
+      lg.addColorStop(0, mixc([141, 145, 155], LIT, warm * .75)); lg.addColorStop(.4, mixc([90, 94, 104], [150, 92, 60], warm * .7)); lg.addColorStop(1, mixc([27, 30, 38], [40, 22, 16], warm * .6));
+      g.fillStyle = lg; g.fill(MOON.ridge);
+      g.globalAlpha = .35 + warm * .5; g.strokeStyle = mixc([169, 173, 183], [255, 214, 160], warm); g.lineWidth = 2; g.stroke(MOON.ridgeTop); g.globalAlpha = 1;
+      for (const [x, y, rx, ry, st] of [[300, 640, 120, 18, 1], [760, 610, 80, 11, 0], [1180, 660, 150, 20, 1], [1450, 600, 60, 9, 0]]) {
+        g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.2832); g.fillStyle = `rgba(59,63,72,.6)`; g.fill();
+        if (st) { g.strokeStyle = `rgba(${mixc([169, 173, 183], LIT, warm).slice(4, -1)},.35)`; g.lineWidth = 1; g.stroke(); }
+      }
+      // the frame: vignette and dark rocks around the view
+      if (rim > .01) {
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        const cx = air.width / 2, cy = air.height * .48, R = Math.max(air.width, air.height) * .72;
+        const vg = g.createRadialGradient(cx, cy, R * .55, cx, cy, R);
+        vg.addColorStop(0, 'rgba(5,7,12,0)'); vg.addColorStop(1, `rgba(5,7,12,${(.95 * rim * (1 - exit)).toFixed(3)})`);
+        g.fillStyle = vg; g.fillRect(0, 0, air.width, air.height);
+        layerT(g, lerp(1.6, 1, rim) * (1 + exit * .5), exit * 40 * vhp, sh);
+        g.globalAlpha = rim * (1 - exit); g.fillStyle = '#0a0c12'; g.fill(MOON.rockL); g.fill(MOON.rockR);
+        if (!SLICE.portrait) { g.fillStyle = '#070910'; g.fill(MOON.rockT); }
+        g.globalAlpha = 1;
+      }
+      // the astronaut, looking at the Earth; the rim light turns from blue-white to fire as it heats
+      if (up > .01) {
+        layerT(g, 1, (lerp(28, 0, up) + exit * 85) * vhp, sh);
+        g.globalAlpha = clamp(up * 2, 0, 1);
+        g.fillStyle = '#0b0d14'; g.fill(MOON.base);
+        g.strokeStyle = `rgba(${mixc([201, 204, 211], LIT, warm).slice(4, -1)},${(.35 + warm * .4).toFixed(2)})`; g.lineWidth = 2; g.stroke(MOON.baseRim);
+        g.fillStyle = '#090b11'; g.strokeStyle = `rgba(${mixc([201, 204, 211], [255, 190, 120], warm).slice(4, -1)},${(.4 + warm * .45).toFixed(2)})`; g.lineWidth = 1.6;
+        for (const p of SUIT) { g.fill(p); g.stroke(p); }
+        g.save(); g.translate(679, 606); g.rotate(5 * D2R); g.fill(LEG2); g.stroke(LEG2); g.restore();
+        g.fill(MOON.arm); g.stroke(MOON.arm); g.fill(HELMET); g.stroke(HELMET);
+        g.strokeStyle = `rgba(${mixc([242, 230, 201], [255, 150, 70], warm).slice(4, -1)},${(.5 + warm * .45).toFixed(2)})`; g.lineWidth = 2; g.stroke(MOON.visor);
+        g.globalAlpha = 1;
+      }
+      // the near ground
+      layerT(g, 1, (lerp(36, 0, gr) + exit * 100) * vhp, sh);
+      lg = g.createLinearGradient(0, 740, 0, 900);
+      lg.addColorStop(0, mixc([42, 45, 53], [96, 56, 36], warm * .7)); lg.addColorStop(.25, mixc([20, 22, 28], [34, 20, 14], warm * .6)); lg.addColorStop(1, '#05070c');
+      g.fillStyle = lg; g.fill(MOON.ground);
+      g.strokeStyle = `rgba(${mixc([201, 204, 211], [255, 200, 140], warm).slice(4, -1)},${(.25 + warm * .35).toFixed(2)})`; g.lineWidth = 2; g.stroke(MOON.groundTop);
+      g.fillStyle = 'rgba(5,7,12,.8)';
+      g.beginPath(); g.ellipse(260, 835, 110, 14, 0, 0, 6.2832); g.fill(); g.beginPath(); g.ellipse(1250, 850, 140, 16, 0, 0, 6.2832); g.fill();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    // ---------- cosmos: blast pieces that rewind into a galaxy ----------
+    const NG = mobile ? 1500 : 3000, NB = mobile ? 360 : 720, NSH = mobile ? 50 : 110, NLOC = mobile ? 380 : 800;
+    const cA = new Float32Array(NG), cV = new Float32Array(NG), cR0 = new Float32Array(NG), cSz = new Float32Array(NG), cSpin = new Float32Array(NG);
+    const cGR = new Float32Array(NG), cGT = new Float32Array(NG), cCol = new Uint8Array(NG), cTw = new Float32Array(NG);
+    const shV = Array.from({ length: NSH }, () => [0, 1, 2].map((k) => [k * 2.094 + rnd(-.5, .5), rnd(.5, 1)]));
+    const gauss = () => { let u = 0; for (let i = 0; i < 4; i++) u += Math.random(); return (u - 2) / .58; };
+    const ARM_K = 4.2, armTheta = (r, j) => j * Math.PI + ARM_K * Math.log(1 + 3 * r);
+    const TARGET = { r: .6, t: armTheta(.6, 0) + .08 };
+    for (let i = 0; i < NG; i++) {
+      cA[i] = rnd(0, 6.2832); cV[i] = i < NSH ? rnd(.45, 1.1) : Math.pow(Math.random(), .7) * 1.25; cR0[i] = Math.sqrt(Math.random()) * .9;
+      cSz[i] = i < NSH ? rnd(6, 16) : rnd(.6, 2); cSpin[i] = rnd(-8, 8); cTw[i] = rnd(0, 6.2832);
+      const q = Math.random();
+      if (i >= NG - NLOC) { const d = Math.exp(rnd(Math.log(.0005), Math.log(.14))), a = rnd(0, 6.2832); cGR[i] = -1; cGT[i] = a; cR0[i] = d; cCol[i] = q < .7 ? 1 : 0; }   // local stars around the Sun
+      else if (q < .18) { cGR[i] = Math.abs(gauss()) * .11; cGT[i] = rnd(0, 6.2832); cCol[i] = 0; }                              // bulge
+      else if (q < .88) { const j = q < .53 ? 0 : 1, r = .08 + .92 * Math.pow(Math.random(), .85); cGR[i] = r + gauss() * .025; cGT[i] = armTheta(r, j) + gauss() * .13 * (1 - r * .3); cCol[i] = Math.random() < .07 ? 2 : 1; }   // spiral arms
+      else { cGR[i] = Math.random(); cGT[i] = rnd(0, 6.2832); cCol[i] = 1; }                                                         // disc
+    }
+    const GTILT = .42, GROT = -.35, cgr = Math.cos(GROT), sgr = Math.sin(GROT);
+    function galXY(r, th) { const x = r * Math.cos(th), y = r * Math.sin(th) * GTILT; return [x * cgr - y * sgr, x * sgr + y * cgr]; }
+    const STAR_COL = ['255,232,190', '200,220,255', '255,150,205'];
+    const HEATC = [[255, 255, 245], [255, 236, 170], [255, 186, 90], [255, 120, 40], [200, 50, 20], [90, 20, 12]];
+    const heatRGB = (k) => { k = clamp(k, 0, 1) * (HEATC.length - 1); const i = Math.min(HEATC.length - 2, Math.floor(k)), f = k - i, a = HEATC[i], b = HEATC[i + 1]; return `${Math.round(lerp(a[0], b[0], f))},${Math.round(lerp(a[1], b[1], f))},${Math.round(lerp(a[2], b[2], f))}`; };
+    const cosGlow = (() => { const s = document.createElement('canvas'); s.width = s.height = 64; const x = s.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, 'rgba(255,240,220,.6)'); g.addColorStop(1, 'rgba(255,200,160,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return s; })();
+    let lastLnZ = 0;
+
+    function drawCosmos(g, pp, t, Wd, Hd, C, R0) {
+      const blastT = pp - .235;
+      if (blastT < 0) return;
+      const bt = clamp(blastT / .1, 0, 1), rw = smooth(range(pp, .325, .395)), gf = smooth(range(pp, .39, .45));
+      const zk = range(pp, .45, .56), Z = Math.exp(7.4 * Math.pow(smooth(zk), 1.5)), lnZ = Math.log(Z);
+      const streak = clamp((lnZ - lastLnZ) * 2.4, 0, .45); lastLnZ = lnZ;
+      const fadeG = 1 - smooth(range(pp, .535, .565));
+      if (fadeG < .005) return;
+      const Dmax = Math.max(Wd, Hd) * .62, ease = 1 - Math.pow(1 - bt, 4);
+      const Rg = Math.min(Wd, Hd) * (mobile ? .62 : .5), rot = (reduce ? 0 : t * .015);
+      const tg = galXY(TARGET.r, TARGET.t + rot), camK = smooth(clamp(zk * 1.7, 0, 1)), camX = tg[0] * camK, camY = tg[1] * camK;
+      g.globalCompositeOperation = 'lighter';
+      // shockwave and fireball
+      if (bt < 1 && rw < .01) {
+        const fb = g.createRadialGradient(C[0], C[1], 0, C[0], C[1], R0 * (1 + bt * 3.5));
+        fb.addColorStop(0, `rgba(255,250,235,${(.95 * Math.pow(1 - bt, 2)).toFixed(3)})`); fb.addColorStop(.4, `rgba(255,170,80,${(.6 * Math.pow(1 - bt, 2)).toFixed(3)})`); fb.addColorStop(1, 'rgba(255,90,30,0)');
+        g.fillStyle = fb; g.fillRect(0, 0, Wd, Hd);
+        for (const [sp, w] of [[16, 7], [9, 4]]) {
+          g.beginPath(); g.ellipse(C[0], C[1], R0 * (1 + sp * ease), R0 * (1 + sp * ease) * .82, 0, 0, 6.2832);
+          g.strokeStyle = `rgba(255,214,170,${(.75 * (1 - bt)).toFixed(3)})`; g.lineWidth = w * gdpr * (1 - bt) + 1; g.stroke();
+        }
+      }
+      const ab = (rw > 0 && rw < 1) ? (6 + 10 * Math.sin(rw * Math.PI)) * gdpr : 0;          // tape misregistration while rewinding
+      for (let i = 0; i < NG; i++) {
+        const isB = i < NB, local = cGR[i] < 0;
+        // blast position (retraced on rewind)
+        let bx = 0, by = 0, bAlpha = 0;
+        if (isB) {
+          const d = (cR0[i] * R0 + cV[i] * Dmax * ease) * (1 - rw);
+          bx = C[0] + Math.cos(cA[i]) * d; by = C[1] + Math.sin(cA[i]) * d * .86; bAlpha = 1;
+        }
+        // galaxy position
+        let gx = 0, gy = 0;
+        if (gf > 0) {
+          let X, Y;
+          if (local) { X = tg[0] + Math.cos(cGT[i]) * cR0[i]; Y = tg[1] + Math.sin(cGT[i]) * cR0[i] * .6; }
+          else { const r = cGR[i] * (.25 + .75 * gf), th = cGT[i] + rot + (1 - gf) * 2.6; [X, Y] = galXY(r, th); }
+          gx = Wd / 2 + (X - camX) * Rg * Z; gy = Hd / 2 + (Y - camY) * Rg * Z;
+        }
+        const x = isB ? lerp(bx, gx, gf) : gx, y = isB ? lerp(by, gy, gf) : gy;
+        let a = isB ? lerp(bAlpha, 1, gf) : gf;
+        if (local) a *= smooth(range(lnZ, .8, 2.2)) * smooth(range(cR0[i] * Z, .004, .03));
+        a *= fadeG;
+        if (a < .02 || x < -40 || y < -40 || x > Wd + 40 || y > Hd + 40) continue;
+        const tw = reduce ? 1 : .75 + .25 * Math.sin(t * 2 + cTw[i]);
+        let col, size;
+        if (isB && gf < .999) {
+          const temp = Math.min(1, bt * 1.15) * (1 - rw);
+          col = gf > .5 ? STAR_COL[cCol[i]] : heatRGB(temp * .85); size = (i < NSH ? cSz[i] : cSz[i] * 1.8) * gdpr * (1 - gf) + gf * 1.4 * gdpr;
+        } else { col = STAR_COL[cCol[i]]; size = (isB ? 1.3 : cSz[i]) * gdpr; }
+        if (gf > 0) size *= Math.min(local ? 6 : 4, Math.pow(Z, local ? .3 : .22));
+        g.globalAlpha = a * tw;
+        if (i < NSH && gf < .6) {                                  // burning shards of the planet
+          const ang = cSpin[i] * bt * (1 - rw) + cA[i], k = 1 - gf / .6, sz = size * k + 1;
+          g.fillStyle = `rgb(${col})`; g.beginPath();
+          shV[i].forEach(([va, vl], j) => { const px = x + Math.cos(va + ang) * vl * sz, py = y + Math.sin(va + ang) * vl * sz; if (j) g.lineTo(px, py); else g.moveTo(px, py); });
+          g.closePath(); g.fill();
+          if (ab) { g.globalAlpha = a * .5; g.fillStyle = 'rgb(0,229,255)'; g.fillRect(x - ab - sz * .5, y - sz * .4, sz, sz * .8); g.fillStyle = 'rgb(255,43,214)'; g.fillRect(x + ab - sz * .5, y - sz * .4, sz, sz * .8); }
+          g.globalAlpha = a * .5; g.drawImage(cosGlow, x - sz * 2.5, y - sz * 2.5, sz * 5, sz * 5);
+        } else if (gf > 0 && streak > .01 && !reduce) {           // warp streaks while zooming
+          const dx = (x - Wd / 2) * streak, dy = (y - Hd / 2) * streak;
+          g.strokeStyle = `rgb(${col})`; g.lineWidth = Math.max(1, size * .8); g.beginPath(); g.moveTo(x - dx, y - dy); g.lineTo(x, y); g.stroke();
+        } else {
+          g.fillStyle = `rgb(${col})`;
+          if (size < 2.2) g.fillRect(x - size / 2, y - size / 2, size, size);
+          else { g.beginPath(); g.arc(x, y, size / 2, 0, 6.2832); g.fill(); }
+          if (isB && gf < .3 && i % 3 === 0) { g.globalAlpha = a * .35 * (1 - gf / .3); g.drawImage(cosGlow, x - size * 3, y - size * 3, size * 6, size * 6); }
+        }
+        if (ab && !(i < NSH) && i % 4 === 0) { g.globalAlpha = a * .4; g.fillStyle = 'rgb(0,229,255)'; g.fillRect(x - ab, y, size, size); g.fillStyle = 'rgb(255,43,214)'; g.fillRect(x + ab, y, size, size); }
+      }
+      g.globalAlpha = 1;
+      // the hot core while the pieces fall back in
+      if (rw > .3 && gf < 1) {
+        const k = smooth(range(rw, .3, 1)) * (1 - gf * .6), cx = lerp(C[0], Wd / 2, gf), cy = lerp(C[1], Hd / 2, gf);
+        g.globalAlpha = k * .8; g.drawImage(cosGlow, cx - R0 * .7, cy - R0 * .7, R0 * 1.4, R0 * 1.4); g.globalAlpha = 1;
+      }
+      // galaxy core glow, and our Sun as the camera dives toward it
+      if (gf > 0) {
+        const cx = Wd / 2 + (0 - camX) * Rg * Z, cy = Hd / 2 + (0 - camY) * Rg * Z, cr = Rg * Z * .32;
+        if (cr < Math.max(Wd, Hd) * 4) {
+          const gg = g.createRadialGradient(cx, cy, 0, cx, cy, cr);
+          gg.addColorStop(0, `rgba(255,236,200,${(.42 * gf * fadeG).toFixed(3)})`); gg.addColorStop(.25, `rgba(255,190,150,${(.1 * gf * fadeG).toFixed(3)})`); gg.addColorStop(1, 'rgba(120,140,255,0)');
+          g.fillStyle = gg; g.save(); g.translate(cx, cy); g.rotate(GROT); g.scale(1, GTILT * 1.4); g.translate(-cx, -cy); g.fillRect(cx - cr, cy - cr, cr * 2, cr * 2); g.restore();
+        }
+        if (zk > 0) {
+          const sx = Wd / 2 + (tg[0] - camX) * Rg * Z, sy2 = Hd / 2 + (tg[1] - camY) * Rg * Z, sr = Math.min(Math.max(Wd, Hd) * .9, 2 * gdpr * Math.pow(Z, .62));
+          g.globalAlpha = smooth(range(zk, 0, .25)) * fadeG; g.drawImage(cosGlow, sx - sr, sy2 - sr, sr * 2, sr * 2); g.globalAlpha = 1;
+        }
+      }
+      g.globalCompositeOperation = 'source-over';
+    }
+
+    // the Earth turning into a sun
+    function drawSun(g, cx, cy, R, k, heatK, t) {
+      if (heatK > .01) {                                          // the whole sky warms around the Earth
+        const sky = g.createRadialGradient(cx, cy, R * .8, cx, cy, Math.max(air.width, air.height) * 1.1);
+        sky.addColorStop(0, `rgba(255,140,60,${(.35 * heatK).toFixed(3)})`); sky.addColorStop(.4, `rgba(200,70,30,${(.14 * heatK).toFixed(3)})`); sky.addColorStop(1, 'rgba(60,10,0,0)');
+        g.fillStyle = sky; g.fillRect(0, 0, air.width, air.height);
+      }
+      if (k < .01) return;
+      g.globalCompositeOperation = 'lighter';
+      const n = 64, rot = reduce ? 0 : t * .05;
+      g.lineCap = 'round';
+      for (let i = 0; i < n; i++) {                                // corona streamers
+        const a = i / n * 6.2832 + rot, fl = .5 + .5 * Math.sin(i * 12.9898 + (reduce ? 0 : t * 1.7) + Math.sin(i * 3.1)), L = R * (1.15 + .55 * fl * k);
+        g.strokeStyle = `rgba(255,${Math.round(170 + 60 * fl)},110,${(.12 * k).toFixed(3)})`; g.lineWidth = R * (.04 + .05 * fl);
+        g.beginPath(); g.moveTo(cx + Math.cos(a) * R * .9, cy + Math.sin(a) * R * .9); g.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); g.stroke();
+      }
+      const bloom = g.createRadialGradient(cx, cy, R * .6, cx, cy, R * 4.5);
+      bloom.addColorStop(0, `rgba(255,200,120,${(.55 * k).toFixed(3)})`); bloom.addColorStop(.3, `rgba(255,140,60,${(.22 * k).toFixed(3)})`); bloom.addColorStop(1, 'rgba(255,90,30,0)');
+      g.fillStyle = bloom; g.fillRect(cx - R * 4.5, cy - R * 4.5, R * 9, R * 9);
+      g.globalCompositeOperation = 'source-over';
+      const disc = g.createRadialGradient(cx - R * .15, cy - R * .15, 0, cx, cy, R * 1.04);
+      disc.addColorStop(0, `rgba(255,253,240,${k.toFixed(3)})`); disc.addColorStop(.55, `rgba(255,226,140,${k.toFixed(3)})`); disc.addColorStop(.85, `rgba(255,150,50,${k.toFixed(3)})`); disc.addColorStop(1, 'rgba(255,100,30,0)');
+      g.fillStyle = disc; g.beginPath(); g.arc(cx, cy, R * 1.04, 0, 6.2832); g.fill();
+      if (!reduce) {                                              // boiling surface
+        g.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 26; i++) {
+          const a = i * 2.39996, rr = R * .78 * Math.sqrt((i + .5) / 26), x = cx + Math.cos(a + t * .08) * rr, y = cy + Math.sin(a + t * .08) * rr, s = R * (.16 + .08 * Math.sin(t * 2.3 + i));
+          g.globalAlpha = .18 * k; g.drawImage(cosGlow, x - s, y - s, s * 2, s * 2);
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
+    }
+
+    function updateLogo(pp) {
+      if (!logo) return;
+      const k = smooth(range(pp, .248, .285)), out = smooth(range(pp, .31, .336)), o = k * (1 - out);
+      show(logo, o);
+      logo.style.setProperty('--s', (.04 + .96 * k - out * .85).toFixed(3));
+      logo.style.setProperty('--rx', ((1 - k) * 75).toFixed(1) + 'deg');
+      logo.style.setProperty('--b', ((1 - k) * 12 + out * 14).toFixed(1) + 'px');
+    }
+
+    let burnLvl = 0, lastPP = -1, banged = false;
+    function drawPrologue(pp, t, dt) {
+      const Wd = gcv.width, Hd = gcv.height, g = actx;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, Wd, Hd);
+      sliceFor(Wd, Hd);
+      const early = pp < .58;
+      // ----- the dust veil -----
+      const sp = pp < .0825 ? pp / .125 : pp < .245 ? .66 : lerp(.7, 1, range(pp, .245, .3));
+      const veil = 1 - range(sp, 0, .18);
+      show(erVeil, veil);
+      erVeil.style.transform = `translate3d(0, ${(-range(sp, 0, .18) * 24).toFixed(2)}vh, 0) scale(${(1 + range(sp, 0, .18) * .25).toFixed(3)})`;
+      if (veil > .001) {
+        const w = erDust.width, h = erDust.height;
+        dctx2.clearRect(0, 0, w, h); dctx2.fillStyle = '#dfe6f2';
+        for (const m of dustMotes) {
+          if (!reduce) { m.x += .006 * m.s * dt; m.y -= .004 * m.s * dt; if (m.x > 1) m.x -= 1; if (m.y < 0) m.y += 1; }
+          dctx2.globalAlpha = m.a * veil; dctx2.beginPath(); dctx2.arc(m.x * w, (m.y - sp * .6) * h, m.r * gdpr * (1 + sp * 4), 0, 6.2832); dctx2.fill();
+        }
+        dctx2.globalAlpha = 1; erDust.style.visibility = 'visible';
+      } else erDust.style.visibility = 'hidden';
+      // ----- heat, sun and blast clocks -----
+      const hk = smooth(range(pp, .09, .23)), melt = smooth(range(pp, .15, .215)), sunK = smooth(range(pp, .175, .232)), blast = pp >= .234;
+      const shakeA = reduce ? 0 : (smooth(range(pp, .19, .234)) * 7 + (blast ? 18 * (1 - smooth(range(pp, .234, .27))) : 0)) * gdpr;
+      const sh = shakeA ? [(Math.random() - .5) * shakeA, (Math.random() - .5) * shakeA] : [0, 0];
+      // ----- Earth: rising over the Moon (pp < .235), then back as Earth today (pp > .55) -----
+      const { s, ox, oy } = SLICE, cx0 = Wd / 2, cy0 = Hd / 2, vhp = Hd / 100;
+      const rise = eo(range(sp, .04, .5)), exit = range(sp, .7, 1);
+      let heat, ice = 1, glow = 0, alpha, Z = 1, o = 0, intro = 0, earthC = [0, 0], R0 = 1;
+      if (pp < .3) {
+        const sc = lerp(.92, 1, rise) * (1 + sunK * .12), ty = (lerp(34, 0, rise) - exit * 12) * vhp;
+        G.cx = cx0 * (1 - sc) + ox * sc + 1050 * s * sc + sh[0]; G.cy = cy0 * (1 - sc) + oy * sc + 448 * s * sc + ty + sh[1];
+        if (SLICE.portrait) G.cy -= Hd * .02;
+        G.R = 215 * s * sc; G.lat0 = 18; G.lon0 = reduce ? 15 : 15 + t * 3 - pp * 60;
+        heat = .1 + .9 * hk + melt * .8; alpha = 1 - (blast ? 1 : 0);
+        earthC = [G.cx, G.cy]; R0 = G.R;
+      } else {
+        intro = smooth(range(pp, .55, .605)); o = clamp((pp - .58) / .42, 0, 1);
+        const e = smooth(clamp((o - .46) / .14, 0, 1));
+        const spin = reduce ? -80 : -80 + t * 4 - o * 70;
+        G.lon0 = lerpAngle(spin, 9.5, e); G.lat0 = lerp(24, 47.8, e);
+        const zl = Math.log(6.5) * smooth(clamp((o - .58) / .22, 0, 1)) + Math.log(40) * Math.pow(clamp((o - .8) / .2, 0, 1), 2.2);
+        Z = Math.exp(zl);
+        const base = (mobile ? .44 * vw : .4 * Math.min(vw, vh)) * gdpr;
+        G.R = base * Z * (.08 + .92 * intro);
+        G.cx = Wd * (mobile ? .5 : lerp(.6, .5, smooth(clamp((o - .74) / .1, 0, 1))) * intro + .5 * (1 - intro));
+        G.cy = Hd * (mobile ? lerp(.36, .5, smooth(clamp((o - .74) / .1, 0, 1))) * intro + .5 * (1 - intro) : .5);
+        heat = .2 * smooth(clamp(o / .3, 0, 1)) + .8 * smooth(clamp((o - .3) / .3, 0, 1));
+        ice = 1 - .85 * smooth(clamp((o - .62) / .16, 0, 1));
+        glow = smooth(clamp((o - .56) / .08, 0, 1)) * (1 - smooth(clamp((o - .86) / .06, 0, 1)));
+        alpha = intro;
+      }
+      G.cL = Math.cos(G.lon0 * D2R); G.sL = Math.sin(G.lon0 * D2R); G.cA = Math.cos(G.lat0 * D2R); G.sA = Math.sin(G.lat0 * D2R);
+      const hiMix = smooth(clamp((Z - 1.8) / 2.5, 0, 1));
+      burnLvl = pp < .3 ? (blast ? 0 : rise * (.12 + .88 * hk)) : alpha * .75 * (1 - smooth(clamp((o - .86) / .08, 0, 1)));
+      if (!reduce && (pp < .24 || pp > .54)) stepParticles(dt, t);
+      if (gl2) {
+        gl2.viewport(0, 0, Wd, Hd); gl2.clearColor(0, 0, 0, 0); gl2.clear(gl2.COLOR_BUFFER_BIT);
+        gl2.enable(gl2.BLEND); gl2.blendFunc(gl2.ONE, gl2.ONE_MINUS_SRC_ALPHA);
+        if (alpha > .003 && G.R > .5 && (pp < .3 || pp > .54)) {
+          useProg(globeProg, gLoc);
+          splat();
+          gl2.activeTexture(gl2.TEXTURE2); gl2.bindTexture(gl2.TEXTURE_2D, densTex);
+          gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, densB);
+          gl2.uniform2f(GU.uC, G.cx, Hd - G.cy); gl2.uniform1f(GU.uR, G.R); gl2.uniform1f(GU.uPx, 1 / G.R);
+          gl2.uniform1f(GU.uLat, G.lat0 * D2R); gl2.uniform1f(GU.uLon, G.lon0 * D2R);
+          gl2.uniform1f(GU.uTime, reduce ? 0 : t); gl2.uniform1f(GU.uHeat, heat); gl2.uniform1f(GU.uIce, ice);
+          gl2.uniform1f(GU.uGlow, glow); gl2.uniform1f(GU.uAlpha, alpha); gl2.uniform1f(GU.uHi, hiMix); gl2.uniform1f(GU.uMelt, pp < .3 ? melt : 0); gl2.uniform1f(GU.uBlue, pp < .3 ? 1 - smooth(range(pp, .1, .19)) : 0);
+          gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+        }
+      }
+      // ----- 2D layers on top of the globe -----
+      if (!gl2 && alpha > .01) { const gr = g.createRadialGradient(G.cx, G.cy, G.R * .2, G.cx, G.cy, G.R * 1.15); gr.addColorStop(0, pp < .3 ? '#2a5c9a' : '#3a2414'); gr.addColorStop(.85, pp < .3 ? '#173a6b' : '#6b3511'); gr.addColorStop(1, 'rgba(111,182,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(G.cx, G.cy, G.R * 1.15, 0, 6.2832); g.fill(); }
+      if (pp < .245) drawSun(g, G.cx, G.cy, G.R, blast ? 0 : sunK, hk * (blast ? 0 : 1), t);
+      if (pp < .3) { drawMoonCache.c = earthC; drawMoonCache.r = R0; }
+      drawCosmos(g, pp, t, Wd, Hd, drawMoonCache.c, drawMoonCache.r);
+      if (exit < 1) drawMoon(g, sp, blast ? lerp(1, .25, range(pp, .234, .3)) : Math.max(hk * .8, sunK), sh);
+      // ----- Earth today: Germany, the Alps and Reutlingen (the original story) -----
+      if (!early || pp > .55) {
+        if (glow > .01) {
+          const pts = GERMANY.map(([lo, la]) => proj(la, lo, 1.001));
+          if (pts.every(Boolean)) {
+            g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath();
+            g.fillStyle = `rgba(255,214,110,${(.14 * glow).toFixed(3)})`; g.fill();
+            g.setLineDash([6 * gdpr, 5 * gdpr]); g.lineDashOffset = reduce ? 0 : -t * 20 * gdpr;
+            g.strokeStyle = `rgba(255,232,160,${(.95 * glow).toFixed(3)})`; g.lineWidth = 2 * gdpr; g.stroke(); g.setLineDash([]);
+          }
+          const fs = Math.round(13 * gdpr);
+          const label = (lat, lon, txt, col, dy) => { const p = proj(lat, lon, 1.001); if (!p) return; g.font = `600 ${fs}px "DM Sans", system-ui, sans-serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(10,6,4,.6)'; const w = g.measureText(txt).width + 16 * gdpr; rrOn(g, p[0] - w / 2, p[1] + dy * gdpr - fs, w, fs * 1.7, fs * .85); g.fill(); g.fillStyle = col; g.fillText(txt, p[0], p[1] + dy * gdpr + fs * .12); };
+          g.globalAlpha = glow;
+          label(51.6, 10.4, 'Germany', '#ffe08a', 0);
+          label(45.4, 8.6, 'Alps · glaciers melting', '#cfeeff', 0);
+          const rp = proj(48.49, 9.21, 1.001);
+          if (rp) { const r0 = 4 * gdpr; g.fillStyle = '#ff7a45'; g.beginPath(); g.arc(rp[0], rp[1], r0, 0, 6.2832); g.fill(); g.strokeStyle = 'rgba(255,122,69,.7)'; g.lineWidth = 2 * gdpr; g.beginPath(); g.arc(rp[0], rp[1], r0 * (2 + (reduce ? 0 : (t * 1.5) % 2)), 0, 6.2832); g.stroke(); label(48.49, 9.21, 'Reutlingen', '#ffffff', -12); }
+          g.globalAlpha = 1;
+        }
+        const dv = clamp((o - .8) / .16, 0, 1);                   // keep going in: warm haze rushes past
+        if (dv > 0) {
+          for (const c of diveClouds) {
+            const k = dv * dv, dist = (c.d + k * 1.6) * Math.max(Wd, Hd), x = Wd / 2 + Math.cos(c.a) * dist, y = Hd / 2 + Math.sin(c.a) * dist * .7, r = (c.s + k * 1.4) * Math.max(Wd, Hd) * .5;
+            g.globalAlpha = Math.min(1, dv * 2) * .9; g.drawImage(warmSprite, x - r, y - r, r * 2, r * 2);
+          }
+          g.globalAlpha = 1;
+        }
+        if (glacierC && o > .54 && o < .82) drawGlacier(smooth(clamp((o - .6) / .16, 0, 1)), t);
+      }
+      // starfield breathes with the galaxy zoom
+      const zk = range(pp, .45, .58);
+      stars.style.transform = zk > 0 && zk < 1 ? `scale(${(1 + Math.sin(zk * Math.PI) * .6).toFixed(3)})` : 'none';
+      // ----- text and HUD -----
+      const tIn = eo(range(sp, .08, .24)), tOut = range(sp, .42, .52);
+      show(erTitle, tIn * (1 - tOut));
+      erTitle.firstElementChild.style.letterSpacing = lerp(.6, .24, tIn) + 'em';
+      erTitle.style.transform = `translate3d(0, ${(-sp * 6).toFixed(2)}vh, 0)`;
+      erTitle.style.filter = tIn < .99 ? `blur(${((1 - tIn) * 10).toFixed(1)}px)` : '';
+      show(erHud, range(sp, .02, .1) * (1 - range(pp, .232, .25)));
+      const warmC = 1.44 * smooth(range(pp, .09, .155)) + 58 * Math.pow(range(pp, .17, .232), 2.4);
+      erTemp.textContent = `+${warmC.toFixed(warmC < 10 ? 2 : 1)} °C`;
+      erTempNote.textContent = pp < .165 ? 'Since 1850–1900 · today 1.44' : 'Illustration · not a forecast';
+      erElev.textContent = (rise * 12.4).toFixed(1) + '°';
+      show(erSub1, smooth(range(pp, .11, .125)) * (1 - smooth(range(pp, .158, .17))));
+      show(erSub2, smooth(range(pp, .176, .19)) * (1 - smooth(range(pp, .22, .232))));
+      show(erGalaxy, smooth(range(pp, .425, .44)) * (1 - smooth(range(pp, .47, .485))));
+      show(erEarth, smooth(range(pp, .565, .58)) * (1 - smooth(range(pp, .6, .615))));
+      updateLogo(pp);
+      if (co2hud) { const ho = intro * (1 - smooth(clamp((o - .5) / .06, 0, 1))) * smooth(range(pp, .6, .62)); show(co2hud, ho); }
+      if (monthbar && !reduce) monthbar.style.transform = `scaleX(${((t / 24) % 1).toFixed(4)})`;
+    }
+    const drawMoonCache = { c: [0, 0], r: 1 };
+
+    // ---------- comic-book post-process over the valley ----------
+    const post = $('#post');
+    let pgl = null, PU = {}, pTex = null;
+    function initPost() {
+      try {
+        pgl = post.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: false });
+        if (!pgl) return;
+        const sh = (type, src) => { const s = pgl.createShader(type); pgl.shaderSource(s, src); pgl.compileShader(s); if (!pgl.getShaderParameter(s, pgl.COMPILE_STATUS)) throw new Error(pgl.getShaderInfoLog(s)); return s; };
+        const pg = pgl.createProgram();
+        pgl.attachShader(pg, sh(pgl.VERTEX_SHADER, 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }'));
+        pgl.attachShader(pg, sh(pgl.FRAGMENT_SHADER, $('#post-fs').textContent));
+        pgl.linkProgram(pg);
+        if (!pgl.getProgramParameter(pg, pgl.LINK_STATUS)) throw new Error(pgl.getProgramInfoLog(pg));
+        pgl.useProgram(pg);
+        const buf = pgl.createBuffer(); pgl.bindBuffer(pgl.ARRAY_BUFFER, buf);
+        pgl.bufferData(pgl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), pgl.STATIC_DRAW);
+        const loc = pgl.getAttribLocation(pg, 'aPos'); pgl.enableVertexAttribArray(loc); pgl.vertexAttribPointer(loc, 2, pgl.FLOAT, false, 0, 0);
+        for (const n of ['uTex', 'uRes', 'uAb', 'uInk', 'uDot', 'uDotSize']) PU[n] = pgl.getUniformLocation(pg, n);
+        pTex = pgl.createTexture(); pgl.activeTexture(pgl.TEXTURE0); pgl.bindTexture(pgl.TEXTURE_2D, pTex);
+        pgl.texParameteri(pgl.TEXTURE_2D, pgl.TEXTURE_MIN_FILTER, pgl.LINEAR); pgl.texParameteri(pgl.TEXTURE_2D, pgl.TEXTURE_MAG_FILTER, pgl.LINEAR);
+        pgl.texParameteri(pgl.TEXTURE_2D, pgl.TEXTURE_WRAP_S, pgl.CLAMP_TO_EDGE); pgl.texParameteri(pgl.TEXTURE_2D, pgl.TEXTURE_WRAP_T, pgl.CLAMP_TO_EDGE);
+        pgl.pixelStorei(pgl.UNPACK_FLIP_Y_WEBGL, true);
+        pgl.uniform1i(PU.uTex, 0);
+        root.classList.add('post-on');
+      } catch (err) { pgl = null; root.classList.remove('post-on'); }
+    }
+    function postProcess() {
+      if (!pgl) return;
+      if (post.width !== cv.width || post.height !== cv.height) { post.width = cv.width; post.height = cv.height; }
+      pgl.viewport(0, 0, post.width, post.height);
+      pgl.texImage2D(pgl.TEXTURE_2D, 0, pgl.RGBA, pgl.RGBA, pgl.UNSIGNED_BYTE, cv);
+      pgl.uniform2f(PU.uRes, post.width, post.height);
+      pgl.uniform1f(PU.uAb, (1.2 + (reduce ? 0 : Math.min(7, Math.abs(scrollVel) * .03))) * dpr);
+      pgl.uniform1f(PU.uInk, .45); pgl.uniform1f(PU.uDot, .2); pgl.uniform1f(PU.uDotSize, 5 * dpr);
+      pgl.drawArrays(pgl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // ---------- the heatwave afternoon, ending in a hot sunset (drives the valley renderer) ----------
+    function heatState(hp) {
+      return { k: .4 + .6 * smooth(clamp(hp / .35, 0, 1)), s: smooth(clamp((hp - .36) / .5, 0, 1)) };
+    }
+    function updateThermo(hp) {
+      const temp = hp < .45 ? lerp(24, 38, smooth(clamp(hp / .4, 0, 1))) : lerp(38, 33, smooth(clamp((hp - .45) / .45, 0, 1)));
+      const mins = 15 * 60 + Math.round(hp * 405 / 15) * 15;
+      thval.textContent = `${Math.round(temp)} °C`;
+      thtime.textContent = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+      thfill.style.transform = `scaleY(${clamp((temp - 10) / 34, 0, 1).toFixed(3)})`;
+    }
+
+    // ---------- CarbonLog overlay ----------
+    const shell = $('#appshell'), appFrame = $('#appframe');
+    const pageEls = [...document.querySelectorAll('main, header.site-nav')];
+    let lastFocus = null;
+    function setOpen(open, from) {
+      if (open) {
+        lastFocus = document.activeElement;
+        const r = from ? from.getBoundingClientRect() : null;
+        shell.style.setProperty('--ox', (r ? r.left + r.width / 2 : innerWidth / 2) + 'px');
+        shell.style.setProperty('--oy', (r ? r.top + r.height / 2 : innerHeight / 2) + 'px');
+        if (!appFrame.getAttribute('src')) appFrame.setAttribute('src', appFrame.dataset.src);
+      }
+      shell.classList.toggle('open', open);
+      root.classList.toggle('appopen', open);
+      shell.setAttribute('aria-hidden', String(!open));
+      for (const el of pageEls) el.inert = open;
+      if (open) $('#appclose').focus({ preventScroll: true });
+      else if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    }
+    function openApp(from) {
+      if (shell.classList.contains('open')) return;
+      try { history.pushState({ app: true }, '', '#carbonlog'); } catch (e) { /* sandboxed frame */ }
+      setOpen(true, from);
+    }
+    function closeApp() {
+      if (!shell.classList.contains('open')) return;
+      if (history.state && history.state.app) history.back();
+      else { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} setOpen(false); }
+    }
+    document.querySelectorAll('.js-open').forEach((b) => b.addEventListener('click', (e) => openApp(e.currentTarget)));
+    $('#appclose').addEventListener('click', closeApp);
+    addEventListener('popstate', () => setOpen(location.hash === '#carbonlog'));
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') closeApp(); });
+    addEventListener('message', (e) => { if (e.source === appFrame.contentWindow && e.data === 'carbonlog:close') closeApp(); });
+    if (location.hash === '#carbonlog') setOpen(true);
+
+    try { history.scrollRestoration = 'manual'; } catch (e) {}
+    initGlobe(); initPost();
+    layout();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

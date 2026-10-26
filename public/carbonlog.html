@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!-- Role: page structure. All content is filled in by app.js using the REST API. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CarbonLog – Carbon footprint logger for SMEs</title>
+  <meta name="color-scheme" content="light">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=DM+Sans:opsz,wght@9..40,400..600&display=swap">
+  <script>if (window.parent !== window) document.documentElement.classList.add('embedded');</script>
+  <link rel="stylesheet" href="carbonlog.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="sound.js" defer></script>
+  <script src="carbonlog.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div class="brand"><a class="back" href="index.html">← Website</a><h1>Carbon<span>Log</span></h1></div>
+      <nav aria-label="Main">
+        <button type="button" class="tab" data-view="dashboard" aria-current="page">Dashboard</button>
+        <button type="button" class="tab" data-view="entries">Entries</button>
+        <button type="button" class="tab" data-view="settings">Settings</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div id="global-error" class="banner error" role="alert" hidden></div>
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view" aria-labelledby="h-dashboard">
+      <h2 id="h-dashboard">Dashboard</h2>
+      <p class="lead">Know your footprint in minutes: log activities, see where your emissions come from.</p>
+
+      <form id="range-form" class="toolbar">
+        <label>From <input type="date" id="range-from"></label>
+        <label>To <input type="date" id="range-to"></label>
+        <button type="submit" class="btn">Apply</button>
+        <button type="button" id="range-clear" class="btn ghost">Clear</button>
+      </form>
+
+      <div id="dash-state" class="state" role="status"></div>
+      <div id="dash-content" hidden>
+        <div class="cards">
+          <div class="card"><div class="label">Total emissions</div><div class="value" id="stat-total">–</div></div>
+          <div class="card"><div class="label">Entries</div><div class="value" id="stat-count">–</div></div>
+          <div class="card"><div class="label">Largest source</div><div class="value" id="stat-top">–</div></div>
+        </div>
+        <div class="charts">
+          <div class="card"><h3>By category</h3><div class="chart-box"><canvas id="chart-category" role="img" aria-label="Doughnut chart of emissions by category"></canvas></div></div>
+          <div class="card"><h3>Monthly trend</h3><div class="chart-box"><canvas id="chart-month" role="img" aria-label="Bar chart of emissions per month"></canvas></div></div>
+        </div>
+        <div class="card" id="target-card">
+          <h3>Reduction target</h3>
+          <p id="target-text"></p>
+          <div class="bar" aria-hidden="true"><div id="target-bar"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENTRIES -->
+    <section id="view-entries" class="view" aria-labelledby="h-entries" hidden>
+      <h2 id="h-entries">Entries</h2>
+      <div class="toolbar">
+        <button type="button" id="add-entry" class="btn primary">Add entry</button>
+        <a class="btn ghost" href="/api/export.csv" download>Export CSV</a>
+      </div>
+      <div id="entries-state" class="state" role="status"></div>
+      <div class="table-wrap">
+        <table id="entries-table" hidden>
+          <caption class="sr">Logged activities and their estimated CO₂</caption>
+          <thead><tr><th>Date</th><th>Category</th><th class="num">Amount</th><th class="num">CO₂ (kg)</th><th>Note</th><th><span class="sr">Actions</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view" aria-labelledby="h-settings" hidden>
+      <h2 id="h-settings">Settings</h2>
+
+      <div class="card">
+        <h3>Reduction target</h3>
+        <form id="target-form" class="toolbar" novalidate>
+          <label>Year <input type="number" id="target-year" min="1990" max="2100" required></label>
+          <label>Reduce by (%) <input type="number" id="target-percent" min="0" max="100" step="any" required></label>
+          <button type="submit" class="btn primary">Save target</button>
+        </form>
+        <p class="hint">Progress compares this year with the previous year (the baseline).</p>
+        <p id="target-msg" class="msg" role="status"></p>
+      </div>
+
+      <div class="card">
+        <h3>Emission factors</h3>
+        <p class="hint">Values are approximate. Verify them against an official source (e.g. Umweltbundesamt, DEFRA) before real use. Changing a factor does not alter entries already saved.</p>
+        <div class="table-wrap">
+          <table id="factors-table">
+            <caption class="sr">Emission factors</caption>
+            <thead><tr><th>Category</th><th>Unit</th><th>kg CO₂ per unit</th><th>Source</th><th>Year</th><th><span class="sr">Save</span></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p id="factors-msg" class="msg" role="status"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add / edit dialog -->
+  <dialog id="entry-dialog" aria-labelledby="entry-dialog-title">
+    <form id="entry-form" novalidate>
+      <h2 id="entry-dialog-title">Add entry</h2>
+      <input type="hidden" id="entry-id">
+
+      <label for="f-category">Category</label>
+      <select id="f-category" required></select>
+      <span class="field-error" id="e-category"></span>
+
+      <div class="row">
+        <div>
+          <label for="f-amount">Amount</label>
+          <input type="number" id="f-amount" step="any" min="0" required>
+          <span class="field-error" id="e-amount"></span>
+        </div>
+        <div>
+          <label for="f-unit">Unit</label>
+          <select id="f-unit" required></select>
+          <span class="field-error" id="e-unit"></span>
+        </div>
+      </div>
+
+      <label for="f-date">Date</label>
+      <input type="date" id="f-date" required>
+      <span class="field-error" id="e-entry_date"></span>
+
+      <label for="f-note">Note (optional)</label>
+      <input type="text" id="f-note" maxlength="200">
+      <span class="field-error" id="e-note"></span>
+
+      <p class="field-error" id="e-form" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="entry-cancel" class="btn ghost">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="wrap">CarbonLog provides <strong>estimates</strong>, not certified emission reports. Emission factors are approximate; verify before using the figures in official reporting.</div>
+  </footer>
+</body>
+</html>

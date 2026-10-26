@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<!--
+  CARBON PULSE – cinematic 3D scroll experience
+  One file, no libraries, nothing to install.
+
+  What is in here
+  - Intro loader, then a hero where you fly THROUGH the giant letters (SVG mask zoom)
+    into a living green world (a globe of leaf-dots, falling 3D leaves and ESG orbits) drawn on a canvas.
+  - Story section: words fly in from depth as you scroll.
+  - Horizontal 3D coverflow rail with cursor tilt and inner parallax.
+  - Velocity-reactive marquee, magnetic button, cursor glow, film grain.
+  - All motion is driven by a smoothed scroll value, so everything feels fluid.
+
+  Reduce Motion: if your operating system asks for reduced motion, the page starts in a calm,
+  static layout and shows a "Play full animations" button. Click it to switch the full
+  experience on (or open the page with ?motion=on).
+
+  Customise: text lives in the HTML below; colours are the variables in :root.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#03110d">
+  <title>Carbon Pulse – Know your carbon footprint</title>
+  <script>
+    // Decide the mode before first paint: "full" animations or "calm" (reduced motion).
+    (function () {
+      var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, force = false;
+      try { force = localStorage.getItem('nova-motion') === 'on'; } catch (e) {}
+      if (/[?&]motion=on/.test(location.search)) force = true;
+      document.documentElement.className = reduce && !force ? 'calm' : 'full';
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #03110d;
+      --ink: #effff6;
+      --muted: #a3c2b4;
+      --cy: #4ade80;
+      --vi: #0d9488;
+      --pk: #a3e635;
+      --font: "Inter Tight", "Inter", "SF Pro Display", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { background: var(--bg); }
+    html.locked { overflow: hidden; }
+    body { font-family: var(--font); color: var(--ink); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    button { font: inherit; color: inherit; }
+    a { color: inherit; }
+
+    /* ---------- fixed background layers ---------- */
+    #warp { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+    #veil { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+    #veil text { font-family: var(--font); font-weight: 900; letter-spacing: -0.02em; }
+    main { position: relative; z-index: 2; }
+
+    .grain {
+      position: fixed; inset: -50%; z-index: 7; pointer-events: none; opacity: .07;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      animation: grain 1s steps(6) infinite;
+    }
+    @keyframes grain {
+      0% { transform: translate(0, 0); } 20% { transform: translate(-5%, 4%); } 40% { transform: translate(4%, -6%); }
+      60% { transform: translate(-6%, -3%); } 80% { transform: translate(5%, 5%); } 100% { transform: translate(0, 0); }
+    }
+    .cursor {
+      position: fixed; left: 0; top: 0; width: 460px; height: 460px; margin: -230px 0 0 -230px; z-index: 6;
+      border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+      background: radial-gradient(circle, rgba(13,148,136,.28), rgba(74,222,128,.08) 45%, transparent 68%);
+      transform: translate3d(-999px, -999px, 0);
+    }
+    @media (pointer: coarse) { .cursor { display: none; } }
+
+    /* ---------- loader ---------- */
+    #loader {
+      position: fixed; inset: 0; z-index: 9; background: #000; display: grid; place-items: center;
+      transition: transform .95s cubic-bezier(.76, 0, .24, 1);
+      animation: loaderFail 0s 8s forwards; /* safety net if scripts fail */
+    }
+    #loader.done { transform: translateY(-100%); }
+    @keyframes loaderFail { to { visibility: hidden; } }
+    #loader .count { font: 800 clamp(4rem, 16vw, 11rem)/1 var(--font); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+    #loader .lab { position: absolute; left: 0; right: 0; bottom: 8vh; text-align: center; font: 600 .75rem/1 ui-monospace, Menlo, monospace; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+
+    /* ---------- nav ---------- */
+    .nav { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 18px clamp(16px, 4vw, 40px); }
+    .logo { font-weight: 900; letter-spacing: .08em; text-decoration: none; font-size: 1.1rem; }
+    .pillbtn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 10px 20px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s; font-weight: 600; font-size: .9rem; }
+    .pillbtn:hover { background: rgba(255,255,255,.18); }
+    .bar { position: fixed; left: 0; top: 0; height: 3px; width: 100%; z-index: 6; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, var(--cy), var(--vi), var(--pk)); }
+    .pillbtn:focus-visible, .cta:focus-visible, .linkbtn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+    .motion-pill { display: none; position: fixed; left: 50%; top: 72px; transform: translateX(-50%); z-index: 8; gap: 12px; align-items: center; padding: 10px 10px 10px 18px; border-radius: 999px; background: rgba(20,22,40,.92); border: 1px solid rgba(255,255,255,.25); font-size: .85rem; max-width: 94vw; }
+    .motion-pill button { background: linear-gradient(100deg, var(--vi), var(--cy)); border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    html.calm .motion-pill { display: flex; }
+
+    /* ---------- shared type ---------- */
+    .eyebrow { font: 600 .75rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .28em; text-transform: uppercase; color: var(--cy); }
+    h2 { font-size: clamp(2.2rem, 6.4vw, 5.2rem); line-height: .98; letter-spacing: -.04em; margin: .7rem 0 0; }
+    .grad { background: linear-gradient(100deg, var(--cy), var(--vi) 55%, var(--pk)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* ---------- tracks (scroll length) + pinned stage ---------- */
+    .hero-track { height: 420vh; }
+    .story-track { height: 380vh; }
+    .pin { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+
+    /* hero */
+    .hero-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* real h1 for screen readers */
+    .hero-copy { position: absolute; left: 0; right: 0; bottom: 8vh; text-align: center; padding: 0 20px; opacity: 0; }
+    .tag { font-size: clamp(1rem, 2.2vw, 1.4rem); color: var(--ink); }
+    .hint { margin-top: 18px; display: inline-flex; flex-direction: column; align-items: center; gap: 10px; font: 600 .7rem/1 ui-monospace, Menlo, monospace; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+    .hint i { width: 1px; height: 46px; background: linear-gradient(var(--cy), transparent); transform-origin: 50% 0; animation: drip 1.8s ease-in-out infinite; }
+    @keyframes drip { 0% { transform: scaleY(0); opacity: 1; } 60% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+
+    /* story */
+    .story-track .pin { display: grid; place-items: center; }
+    .story-wrap { text-align: center; padding: 0 6vw; }
+    .story { font-size: clamp(1.9rem, 5.2vw, 4.6rem); font-weight: 800; line-height: 1.08; letter-spacing: -.035em; max-width: 17em; margin: 1.4rem auto 0; perspective: 900px; transform-style: preserve-3d; }
+    .story .w { display: inline-block; margin-right: .26em; will-change: transform, opacity; }
+    .story .w.hl { color: var(--cy); }
+    .story .w.hl:nth-of-type(3n) { color: var(--pk); }
+    .story .w.hl:nth-of-type(3n+1) { color: #86efac; }
+
+    /* rail */
+    .rail-track { height: 300vh; }
+    .rail-track .pin { display: flex; flex-direction: column; justify-content: center; gap: 4vh; }
+    .rail-head { padding: 0 8vw; }
+    .rail-wrap { flex: 0 0 auto; perspective: 1400px; } /* perspective must sit on the parent of the 3D rail */
+    .rail { position: relative; display: flex; gap: clamp(18px, 3vw, 40px); padding: 0 8vw; width: max-content; transform-style: preserve-3d; will-change: transform; }
+    .card { flex: 0 0 auto; width: min(78vw, 430px); height: min(56vh, 500px); transform-style: preserve-3d; will-change: transform, opacity; }
+    .tilt { position: relative; width: 100%; height: 100%; border-radius: 28px; overflow: hidden; border: 1px solid rgba(255,255,255,.16); background: #0a1a15; box-shadow: 0 40px 90px rgba(0,0,0,.6); transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)); transition: transform .18s ease-out; }
+    .tilt::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,.2), transparent 60%); opacity: 0; transition: opacity .25s; }
+    .tilt:hover::after { opacity: 1; }
+    .art { position: absolute; inset: 0; overflow: hidden; transform: translate3d(calc(var(--px, 0) * 1px), 0, 0) scale(1.2); }
+    .art::before { content: ""; position: absolute; inset: -70%; background: conic-gradient(var(--c1), var(--c2), var(--c3), var(--c1)); animation: rot 16s linear infinite; }
+    .art::after { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 55% at 50% 115%, rgba(3,17,13,.92), transparent 70%), repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 42px); }
+    @keyframes rot { to { transform: rotate(360deg); } }
+    .meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px; z-index: 2; transform: translateZ(40px); }
+    .num { font: 600 .75rem/1 ui-monospace, Menlo, monospace; letter-spacing: .25em; color: var(--cy); }
+    .card h3 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.03em; margin: .5rem 0 .4rem; }
+    .card p { color: var(--muted); font-size: .98rem; line-height: 1.5; }
+    .c1 { --c1: #4ade80; --c2: #0d9488; --c3: #064e3b; }
+    .c2 { --c1: #a3e635; --c2: #4ade80; --c3: #14532d; }
+    .c3 { --c1: #2dd4bf; --c2: #38bdf8; --c3: #083344; }
+    .c4 { --c1: #fbbf24; --c2: #a3e635; --c3: #365314; }
+    .c5 { --c1: #86efac; --c2: #2dd4bf; --c3: #052e16; }
+
+    /* marquee */
+    .band { padding: 14vh 0; overflow: hidden; }
+    .row { display: flex; white-space: nowrap; width: max-content; font-weight: 900; font-size: clamp(3.4rem, 11vw, 9.5rem); line-height: 1.02; letter-spacing: -.04em; text-transform: uppercase; will-change: transform; }
+    .row span { padding-right: .4em; }
+    .r1 { color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,.55); }
+    .r2 { background: linear-gradient(90deg, var(--cy), var(--vi), var(--pk)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* finale */
+    .finale { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 14vh 6vw 8vh; }
+    .finale h2 { max-width: 12em; margin-left: auto; margin-right: auto; }
+    .sub { color: var(--muted); margin: 1.2rem 0 2.4rem; font-size: 1.1rem; }
+    .cta { display: inline-block; text-decoration: none; font-weight: 800; font-size: 1.1rem; padding: 22px 44px; border-radius: 999px; background: linear-gradient(100deg, var(--vi), var(--cy)); box-shadow: 0 20px 60px rgba(13,148,136,.5); will-change: transform; transition: box-shadow .25s; }
+    .cta:hover { box-shadow: 0 24px 80px rgba(74,222,128,.55); }
+    .cta span { display: inline-block; will-change: transform; }
+    .foot { margin-top: 12vh; color: var(--muted); font-size: .85rem; }
+    .linkbtn { background: none; border: 0; text-decoration: underline; cursor: pointer; }
+
+    /* ---------- CarbonLog app overlay: circular reveal from the clicked button ---------- */
+    html.appopen { overflow: hidden; }
+    .appshell {
+      position: fixed; inset: 0; z-index: 10; background: var(--bg); visibility: hidden;
+      clip-path: circle(0px at var(--ox, 50%) var(--oy, 50%));
+      transition: clip-path .9s cubic-bezier(.76, 0, .24, 1), visibility 0s .9s;
+    }
+    .appshell.open {
+      visibility: visible;
+      clip-path: circle(150vmax at var(--ox, 50%) var(--oy, 50%));
+      transition: clip-path .9s cubic-bezier(.76, 0, .24, 1), visibility 0s;
+    }
+    .appbar { position: absolute; left: 0; right: 0; top: 0; height: 64px; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 4vw, 40px); background: rgba(3,17,13,.92); border-bottom: 1px solid rgba(255,255,255,.12); }
+    .appbar .logo em { font-style: normal; font-weight: 600; color: var(--muted); letter-spacing: .04em; margin-left: .35em; }
+    .appframe { position: absolute; left: 0; right: 0; top: 64px; width: 100%; height: calc(100% - 64px); border: 0; background: var(--bg); color-scheme: dark; }
+    html.calm .appshell { transition: none; }
+
+    /* ---------- calm mode (reduced motion): static, readable, no flying ---------- */
+    html.calm .track { height: auto !important; }
+    html.calm .pin { position: static; height: auto; min-height: 70vh; overflow: visible; padding: 14vh 0; }
+    html.calm #warp, html.calm #veil, html.calm .cursor, html.calm .grain, html.calm #loader, html.calm .bar { display: none; }
+    html.calm body { background: radial-gradient(60% 50% at 50% 20%, #0f3d2e, transparent 70%), var(--bg); }
+    html.calm .hero-track .pin { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    html.calm .hero-title { position: static; width: auto; height: auto; clip: auto; padding: 0 .1em; overflow: visible; font-size: clamp(3rem, 11vw, 9rem); font-weight: 900; letter-spacing: -.05em; line-height: .9; text-align: center; background: linear-gradient(100deg, var(--cy), var(--vi) 55%, var(--pk)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    html.calm .hero-copy { position: static; opacity: 1 !important; margin-top: 24px; }
+    html.calm .hint { display: none; }
+    html.calm .story .w { opacity: 1 !important; transform: none !important; }
+    html.calm .rail-wrap { overflow-x: auto; scroll-snap-type: x mandatory; }
+    html.calm .rail { transform: none !important; }
+    html.calm .card { transform: none !important; opacity: 1 !important; scroll-snap-align: center; }
+    html.calm .art::before { animation: none; }
+    html.calm .row { transform: none !important; }
+  </style>
+</head>
+<body>
+  <canvas id="warp" aria-hidden="true"></canvas>
+  <svg id="veil" aria-hidden="true" preserveAspectRatio="none">
+    <defs>
+      <mask id="vm" maskUnits="userSpaceOnUse" x="0" y="0">
+        <rect id="vr1" fill="#fff"/>
+        <g id="mg"><text id="mt" fill="#000" text-anchor="middle">PULSE</text></g>
+      </mask>
+    </defs>
+    <rect id="vr2" fill="#03110d" mask="url(#vm)"/>
+    <g id="og"><text id="ot" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.5" text-anchor="middle">PULSE</text></g>
+  </svg>
+
+  <div class="grain" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+  <div class="bar" id="bar"></div>
+
+  <div id="loader" aria-hidden="true">
+    <div class="count" id="count">000</div>
+    <div class="lab">Loading experience</div>
+  </div>
+
+  <div class="motion-pill" role="region" aria-label="Motion setting">
+    <span>Reduce Motion is on in your system.</span>
+    <button type="button" id="playbtn">Play full animations</button>
+  </div>
+
+  <header class="nav">
+    <a class="logo" href="#hero" id="logo">CARBON PULSE</a>
+    <button type="button" class="pillbtn" id="navcta">Start a project</button>
+  </header>
+
+  <main>
+    <section class="track hero-track" id="hero">
+      <div class="pin">
+        <h1 class="hero-title">CARBON PULSE</h1>
+        <div class="hero-copy" id="herocopy">
+          <p class="tag">Know your company’s carbon footprint, then shrink it.</p>
+          <div class="hint"><span>Scroll to enter</span><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="track story-track" id="storytrack">
+      <div class="pin">
+        <div class="story-wrap">
+          <p class="eyebrow">01 — What you get</p>
+          <p class="story" id="story" data-text="Log your *energy*, *travel* and *purchases* in minutes. CarbonLog turns them into clear *CO₂ numbers*, shows your *biggest sources*, and helps you reach a *greener* year.">Log your energy, travel and purchases in minutes. CarbonLog turns them into clear CO₂ numbers, shows your biggest sources, and helps you reach a greener year.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="track rail-track" id="railtrack">
+      <div class="pin">
+        <div class="rail-head">
+          <p class="eyebrow">02 — How it helps you</p>
+          <h2>Everything you need to go <span class="grad">greener</span></h2>
+        </div>
+        <div class="rail-wrap">
+          <div class="rail" id="rail">
+            <article class="card"><div class="tilt"><div class="art c1"></div><div class="meta"><span class="num">01</span><h3>Log in minutes</h3><p>Add electricity, gas, car, flight, train or purchases. Pick your unit and we do the maths.</p></div></div></article>
+            <article class="card"><div class="tilt"><div class="art c2"></div><div class="meta"><span class="num">02</span><h3>See your footprint</h3><p>A dashboard shows your total CO₂, your biggest source and your month-by-month trend.</p></div></div></article>
+            <article class="card"><div class="tilt"><div class="art c3"></div><div class="meta"><span class="num">03</span><h3>Set a reduction goal</h3><p>Choose a yearly target and watch your progress compared with last year.</p></div></div></article>
+            <article class="card"><div class="tilt"><div class="art c4"></div><div class="meta"><span class="num">04</span><h3>You stay in control</h3><p>Edit or delete any entry at any time. Your numbers stay yours.</p></div></div></article>
+            <article class="card"><div class="tilt"><div class="art c5"></div><div class="meta"><span class="num">05</span><h3>A first step for ESG</h3><p>Built for small companies starting out. Results are estimates, not certified reports.</p></div></div></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-hidden="true">
+      <div class="row r1" id="row1"><span>Measure ✦ Reduce ✦ Report ✦ Grow ✦</span></div>
+      <div class="row r2" id="row2"><span>Energy ✦ Travel ✦ Goods ✦ Net zero ✦</span></div>
+    </section>
+
+    <section class="finale" id="finale">
+      <div>
+        <p class="eyebrow">03 — Get started</p>
+        <h2>Make your next year <span class="grad">greener.</span></h2>
+        <p class="sub">Open CarbonLog and see your company’s carbon footprint in minutes.</p>
+        <a class="cta" id="cta" href="#carbonlog"><span>Start a project</span></a>
+        <p class="foot">© Carbon Pulse · CarbonLog · <button type="button" class="linkbtn" id="totop">Back to top</button></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- CarbonLog opens here when "Start a project" is clicked. The app loads on first open. -->
+  <div class="appshell" id="appshell" role="dialog" aria-modal="true" aria-label="CarbonLog" aria-hidden="true">
+    <div class="appbar">
+      <span class="logo">CARBON PULSE <em>/ CarbonLog</em></span>
+      <button type="button" class="pillbtn" id="appclose" aria-label="Close CarbonLog and return to Carbon Pulse">✕ Close</button>
+    </div>
+    <iframe class="appframe" id="appframe" title="CarbonLog – carbon footprint logger" data-src="carbonlog.html"></iframe>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const $ = (s) => document.querySelector(s);
+      const root = document.documentElement;
+      const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      const smooth = (t) => t * t * (3 - 2 * t);
+      const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+      history.scrollRestoration = 'manual';
+
+      // ---------- words for the story section (used in both modes) ----------
+      const storyEl = $('#story');
+      const words = (() => {
+        const raw = storyEl.dataset.text;
+        storyEl.setAttribute('aria-label', raw.replace(/\*/g, ''));
+        storyEl.textContent = '';
+        let hl = false;
+        return raw.split(/\s+/).map((token) => {
+          const stars = (token.match(/\*/g) || []).length;
+          if (token.startsWith('*')) hl = true;
+          const span = document.createElement('span');
+          span.className = 'w' + (hl ? ' hl' : '');
+          span.setAttribute('aria-hidden', 'true');
+          span.textContent = token.replace(/\*/g, '');
+          storyEl.appendChild(span);
+          if (stars === 2 || (stars === 1 && !token.startsWith('*'))) hl = false;
+          return span;
+        });
+      })();
+
+      // ---------- buttons that work in every mode ----------
+      // ---------- CarbonLog overlay (works in full and calm mode) ----------
+      const shell = $('#appshell'), appFrame = $('#appframe');
+      const pageEls = [...document.querySelectorAll('main, header.nav')];
+      let lastFocus = null;
+
+      function setOpen(open, from) {
+        if (open) {
+          lastFocus = document.activeElement;
+          const r = from ? from.getBoundingClientRect() : null;   // the reveal grows out of the clicked button
+          shell.style.setProperty('--ox', (r ? r.left + r.width / 2 : innerWidth / 2) + 'px');
+          shell.style.setProperty('--oy', (r ? r.top + r.height / 2 : innerHeight / 2) + 'px');
+          if (!appFrame.getAttribute('src')) appFrame.setAttribute('src', appFrame.dataset.src); // load on first open
+        }
+        shell.classList.toggle('open', open);
+        root.classList.toggle('appopen', open);
+        shell.setAttribute('aria-hidden', String(!open));
+        for (const el of pageEls) el.inert = open;                // keep keyboard focus out of the page behind
+        if (open) $('#appclose').focus({ preventScroll: true });
+        else if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+      }
+      function openApp(from) {
+        if (shell.classList.contains('open')) return;
+        try { history.pushState({ app: true }, '', '#carbonlog'); } catch (err) { /* e.g. sandboxed frame */ }
+        setOpen(true, from);
+      }
+      function closeApp() {
+        if (!shell.classList.contains('open')) return;
+        if (history.state && history.state.app) history.back();   // the popstate handler closes it
+        else {
+          try { history.replaceState(null, '', location.pathname + location.search); } catch (err) {}
+          setOpen(false);
+        }
+      }
+      $('#navcta').addEventListener('click', (e) => openApp(e.currentTarget));
+      $('#cta').addEventListener('click', (e) => { e.preventDefault(); openApp(e.currentTarget); });
+      $('#appclose').addEventListener('click', closeApp);
+      addEventListener('popstate', () => setOpen(location.hash === '#carbonlog'));   // browser back/forward
+      addEventListener('keydown', (e) => { if (e.key === 'Escape') closeApp(); });
+      addEventListener('message', (e) => {                        // Escape pressed inside the CarbonLog frame
+        if (e.source === appFrame.contentWindow && e.data === 'carbonlog:close') closeApp();
+      });
+      if (location.hash === '#carbonlog') setOpen(true);          // direct link / reload while open
+      $('#totop').addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+      $('#logo').addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: 'smooth' }); });
+
+      if (root.classList.contains('calm')) {
+        // Calm mode: static page. The button below can switch the full experience on.
+        $('#playbtn').addEventListener('click', () => {
+          try { localStorage.setItem('nova-motion', 'on'); } catch (e) {}
+          root.classList.remove('calm');
+          root.classList.add('full');
+          scrollTo(0, 0);
+          startFull(false);
+        });
+      } else {
+        startFull(true);
+      }
+
+      // =====================================================================
+      function startFull(intro) {
+        if (intro) scrollTo(0, 0); // the intro always starts at the top
+        const canvas = $('#warp'), ctx = canvas.getContext('2d');
+        const svg = $('#veil'), mask = $('#vm'), vr1 = $('#vr1'), vr2 = $('#vr2');
+        const mt = $('#mt'), ot = $('#ot'), mg = $('#mg'), og = $('#og');
+        const heroCopy = $('#herocopy');
+        const hero = $('#hero'), storyTrack = $('#storytrack'), railTrack = $('#railtrack');
+        const rail = $('#rail'), bar = $('#bar'), cursor = $('#cursor'), loader = $('#loader');
+        const row1 = $('#row1'), row2 = $('#row2');
+        const cards = [...rail.querySelectorAll('.card')].map((el) => ({ el, art: el.querySelector('.art'), tilt: el.querySelector('.tilt'), cx: 0 }));
+
+        // marquee: repeat the phrase so the row is always longer than the screen
+        for (const row of [row1, row2]) {
+          const first = row.firstElementChild;
+          while (row.children.length < 4) row.appendChild(first.cloneNode(true));
+        }
+
+        let vw = 0, vh = 0, dpr = 1, ox = 0, oy = 0, railDist = 0, maxScroll = 1, unit1 = 1, unit2 = 1;
+        let heroT = { top: 0, len: 1 }, storyT = { top: 0, len: 1 }, railTop = 0;
+        let sc = scrollY, lastSc = -1;
+        let px = 0, py = 0, pxs = 0, pys = 0;            // pointer -1..1 (raw, smoothed)
+        let mx = innerWidth / 2, my = innerHeight / 2, cxs = mx, cys = my; // cursor glow
+        let introStart = intro ? 0 : -1;                  // 0 = waiting, -1 = no intro, >0 = running
+        let ie = intro ? 0 : 1;
+
+        // ---------- living world: leaf-dot globe, ESG orbits, falling 3D leaves, pollen ----------
+        const GREENS = ['74,222,128', '45,212,191', '163,230,53', '167,243,208'];
+        const GN = innerWidth < 760 ? 1100 : 2200;
+        const globe = Array.from({ length: GN }, (_, i) => {   // Fibonacci sphere: evenly spread points
+          const y = 1 - (i + 0.5) / GN * 2, r = Math.sqrt(1 - y * y), th = i * 2.399963;
+          return { x: Math.cos(th) * r, y, z: Math.sin(th) * r, c: (Math.random() * GREENS.length) | 0, s: rnd(0.55, 1.1) };
+        });
+        const ORBITS = [{ ch: 'E', rx: 1.15, rz: 0.2, sp: 0.5 }, { ch: 'S', rx: 0.35, rz: 1.0, sp: -0.38 }, { ch: 'G', rx: 1.8, rz: -0.7, sp: 0.3 }];
+        const leaves = Array.from({ length: innerWidth < 760 ? 30 : 56 }, () => spawnLeaf({}, true));
+        const pollen = Array.from({ length: innerWidth < 760 ? 60 : 120 }, () => { const z = rnd(0.1, 1); return { a: rnd(-0.55, 0.55) * z, b: rnd(-0.36, 0.36) * z, z, ph: rnd(0, 6.28) }; });
+        function spawnLeaf(l, anywhere) {
+          l.z = anywhere ? rnd(0.12, 1) : rnd(0.4, 1);          // positions scale with depth so leaves fill the screen at any distance
+          l.a = rnd(-0.55, 0.55) * l.z; l.b = anywhere ? rnd(-0.36, 0.36) * l.z : -0.4 * l.z;
+          l.rx = rnd(0, 6.28); l.rz = rnd(0, 6.28); l.sp = rnd(0.01, 0.03);
+          l.c = GREENS[(Math.random() * 3) | 0]; l.size = rnd(0.022, 0.04);
+          return l;
+        }
+
+        function drawWorld(speed, hue, z, gs, off, t) {
+          const W = canvas.width, H = canvas.height;
+          const f = Math.hypot(W, H) * 0.5;                // projection scale
+          const cx = W / 2 + pxs * 26 * dpr, cy = H / 2 + pys * 18 * dpr;
+          const gx = cx + off, R = Math.min(W, H) * 0.3 * gs;
+
+          const g = ctx.createRadialGradient(gx, cy, 0, gx, cy, Math.max(W, H) * 0.8);
+          g.addColorStop(0, `hsl(${hue}, 70%, 17%)`);
+          g.addColorStop(0.5, `hsl(${hue + 20}, 65%, 8%)`);
+          g.addColorStop(1, '#03110d');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+
+          // globe
+          const ang = t * 0.14 + sc * 0.0016, ca = Math.cos(ang), sa = Math.sin(ang), tilt = 0.4, ct = Math.cos(tilt), st = Math.sin(tilt), D = 3.4;
+          const halo = ctx.createRadialGradient(gx, cy, R * 0.6, gx, cy, R * 1.5);
+          halo.addColorStop(0, 'rgba(74,222,128,.16)'); halo.addColorStop(1, 'rgba(74,222,128,0)');
+          ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(gx, cy, R * 1.5, 0, Math.PI * 2); ctx.fill();
+          for (const d of globe) {
+            const x1 = d.x * ca + d.z * sa, z1 = -d.x * sa + d.z * ca;
+            const y2 = d.y * ct - z1 * st, z2 = d.y * st + z1 * ct;
+            const p = D / (D - z2);
+            const al = 0.12 + 0.88 * (z2 + 1) / 2;
+            ctx.fillStyle = `rgba(${GREENS[d.c]},${al.toFixed(3)})`;
+            ctx.beginPath(); ctx.arc(gx + x1 * R * p, cy + y2 * R * p, (0.8 + z2 * 0.6) * d.s * 1.3 * dpr * Math.sqrt(gs), 0, Math.PI * 2); ctx.fill();
+          }
+
+          // E / S / G orbits: three rings, each carrying its letter around the globe
+          ctx.lineWidth = 1.2 * dpr;
+          for (const o of ORBITS) {
+            const cX = Math.cos(o.rx), sX = Math.sin(o.rx), cZ = Math.cos(o.rz), sZ = Math.sin(o.rz);
+            const pt = (u) => {
+              let x = Math.cos(u) * 1.5, y = 0, zz = Math.sin(u) * 1.5;
+              let y1 = y * cX - zz * sX, z1 = y * sX + zz * cX;          // tilt around X
+              let x2 = x * cZ - y1 * sZ, y2 = x * sZ + y1 * cZ;          // roll around Z
+              const x3 = x2 * ca + z1 * sa, z3 = -x2 * sa + z1 * ca;     // spin with the globe
+              const p = D / (D - z3 * 0.9);
+              return [gx + x3 * R * p, cy + y2 * R * p, z3];
+            };
+            ctx.strokeStyle = 'rgba(167,243,208,.22)'; ctx.beginPath();
+            for (let k = 0; k <= 90; k++) { const q = pt(k / 90 * Math.PI * 2); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+            ctx.stroke();
+            const m = pt(t * o.sp + ORBITS.indexOf(o) * 2.09), rr = (13 + m[2] * 3) * dpr;
+            ctx.fillStyle = m[2] > -0.2 ? '#4ade80' : 'rgba(74,222,128,.45)';
+            ctx.beginPath(); ctx.arc(m[0], m[1], rr, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#03110d'; ctx.font = `800 ${Math.round(rr * 1.05)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(o.ch, m[0], m[1] + dpr);
+          }
+
+          // pollen / fireflies drifting upward
+          for (const q of pollen) {
+            q.b -= 0.0007 + speed * 0.25; q.z -= speed * 0.35;
+            if (q.z < 0.06 || q.b < -0.4 * q.z) { q.z = rnd(0.2, 1); q.b = 0.4 * q.z; q.a = rnd(-0.55, 0.55) * q.z; }
+            const k = f / q.z, tw = 0.5 + 0.5 * Math.sin(t * 2 + q.ph);
+            ctx.fillStyle = `rgba(217,249,157,${(0.15 + 0.55 * tw * (1 - q.z)).toFixed(3)})`;
+            ctx.beginPath(); ctx.arc(cx + (q.a + Math.sin(t * 0.4 + q.ph) * 0.03) * k, cy + q.b * k, (1 + (1 - q.z) * 2.2) * dpr, 0, Math.PI * 2); ctx.fill();
+          }
+
+          // falling leaves: real 3D positions, flipping as they fall, rushing past the camera when you scroll fast
+          for (const l of leaves) {
+            l.b += 0.0016 + speed * 0.5; l.z -= 0.0006 + speed * 0.5; l.a += Math.sin(t * 0.7 + l.rx) * 0.0008;
+            l.rx += l.sp + speed * 2; l.rz += l.sp * 0.4;
+            const k = f / l.z, sz = l.size * k;
+            if (l.z < 0.06 || cy + l.b * k > H + sz * 2 || Math.abs(l.a * k) > W) { spawnLeaf(l, false); continue; }
+            ctx.save();
+            ctx.translate(cx + l.a * k, cy + l.b * k);
+            ctx.rotate(l.rz);
+            ctx.scale(sz, sz * Math.cos(l.rx));
+            ctx.globalAlpha = clamp((1 - l.z) * 1.2 + 0.2, 0, 0.72) * clamp(l.z * 8, 0, 1);
+            ctx.fillStyle = `rgb(${l.c})`;
+            ctx.beginPath(); ctx.moveTo(-1, 0); ctx.bezierCurveTo(-0.4, -0.7, 0.5, -0.6, 1, 0); ctx.bezierCurveTo(0.5, 0.6, -0.4, 0.7, -1, 0); ctx.fill();
+            ctx.globalAlpha *= 0.5; ctx.strokeStyle = '#03110d'; ctx.lineWidth = 0.08;
+            ctx.beginPath(); ctx.moveTo(-1, 0); ctx.lineTo(0.9, 0); ctx.stroke();
+            ctx.restore();
+          }
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+        }
+
+        // ---------- layout (runs on load and resize) ----------
+        function layout() {
+          vw = innerWidth; vh = innerHeight;
+          dpr = Math.min(devicePixelRatio || 1, 1.5);
+          canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
+
+          svg.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+          for (const r of [vr1, vr2]) { r.setAttribute('width', vw); r.setAttribute('height', vh); }
+          mask.setAttribute('width', vw); mask.setAttribute('height', vh);
+          const size = Math.min(vw * 0.22, vh * 0.46);
+          for (const t of [mt, ot]) {
+            t.setAttribute('x', vw / 2); t.setAttribute('y', vh / 2 + size * 0.36); t.setAttribute('font-size', size);
+          }
+          // Zoom target: the left stroke of the "U", so the letter swallows the screen.
+          // (measured on the visible outline text; text inside a mask is not always measurable)
+          try { const e = ot.getExtentOfChar(1); ox = e.x + e.width * 0.15; } catch (err) { ox = vw / 2 - size * 0.5; }
+          oy = vh / 2;
+
+          railDist = Math.max(0, rail.offsetWidth - vw);
+          railTrack.style.height = (vh + railDist) + 'px';
+          for (const c of cards) c.cx = c.el.offsetLeft + c.el.offsetWidth / 2;
+
+          const top = (el) => el.getBoundingClientRect().top + scrollY;
+          heroT = { top: top(hero), len: Math.max(1, hero.offsetHeight - vh) };
+          storyT = { top: top(storyTrack), len: Math.max(1, storyTrack.offsetHeight - vh) };
+          railTop = top(railTrack);
+          maxScroll = Math.max(1, root.scrollHeight - vh);
+          unit1 = row1.firstElementChild.offsetWidth || 1;
+          unit2 = row2.firstElementChild.offsetWidth || 1;
+          lastSc = -1;
+        }
+
+        // ---------- input ----------
+        addEventListener('resize', layout);
+        addEventListener('pointermove', (e) => {
+          px = e.clientX / innerWidth * 2 - 1; py = e.clientY / innerHeight * 2 - 1;
+          mx = e.clientX; my = e.clientY;
+        }, { passive: true });
+
+        for (const c of cards) {                           // cursor tilt + highlight on each card
+          c.tilt.addEventListener('pointermove', (e) => {
+            const r = c.tilt.getBoundingClientRect();
+            const nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+            c.tilt.style.setProperty('--tx', (-ny * 12).toFixed(2) + 'deg');
+            c.tilt.style.setProperty('--ty', (nx * 14).toFixed(2) + 'deg');
+            c.tilt.style.setProperty('--mx', (nx + 0.5) * 100 + '%');
+            c.tilt.style.setProperty('--my', (ny + 0.5) * 100 + '%');
+          });
+          c.tilt.addEventListener('pointerleave', () => {
+            c.tilt.style.setProperty('--tx', '0deg'); c.tilt.style.setProperty('--ty', '0deg');
+          });
+        }
+
+        const cta = $('#cta'), ctaText = cta.firstElementChild;   // magnetic button
+        addEventListener('pointermove', (e) => {
+          const r = cta.getBoundingClientRect();
+          const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+          if (Math.hypot(dx, dy) < 170) {
+            cta.style.transform = `translate(${dx * 0.28}px, ${dy * 0.28}px)`;
+            ctaText.style.transform = `translate(${dx * 0.1}px, ${dy * 0.1}px)`;
+          } else { cta.style.transform = ''; ctaText.style.transform = ''; }
+        }, { passive: true });
+
+        // ---------- intro loader ----------
+        if (intro) {
+          root.classList.add('locked');
+          const t0 = performance.now(), count = $('#count');
+          const step = (now) => {
+            const t = clamp((now - t0) / 1500, 0, 1);
+            count.textContent = String(Math.round(easeOut(t) * 100)).padStart(3, '0');
+            if (t < 1) { requestAnimationFrame(step); return; }
+            loader.classList.add('done');
+            introStart = performance.now();
+            setTimeout(() => { loader.remove(); root.classList.remove('locked'); }, 1000);
+          };
+          requestAnimationFrame(step);
+        } else {
+          loader.remove();
+        }
+
+        // ---------- main loop ----------
+        function frame(now) {
+          if (root.classList.contains('appopen')) { requestAnimationFrame(frame); return; } // page is covered by the app
+          sc += (scrollY - sc) * 0.085;                    // smoothed scroll: the source of all fluid motion
+          if (Math.abs(scrollY - sc) < 0.05) sc = scrollY;
+          const v = scrollY - sc;                          // leftover distance = scroll velocity
+          pxs += (px - pxs) * 0.06; pys += (py - pys) * 0.06;
+          cxs += (mx - cxs) * 0.12; cys += (my - cys) * 0.12;
+          cursor.style.transform = `translate3d(${cxs}px, ${cys}px, 0)`;
+
+          if (introStart > 0) ie = easeOut(clamp((now - introStart) / 1500, 0, 1));
+
+          const hp = clamp((sc - heroT.top) / heroT.len, 0, 1);
+          const z = clamp(hp / 0.9, 0, 1);                 // zoom progress through the letters
+
+          // hero: zoom into the letter. Scale grows exponentially so the speed feels constant.
+          if (z < 0.995) {
+            svg.style.display = 'block';
+            svg.style.opacity = ie;
+            const s = Math.exp(Math.log(140) * z) * (1 + (1 - ie) * 0.3);
+            const t = `translate(${pxs * 18} ${pys * 12}) translate(${ox} ${oy}) scale(${s}) translate(${-ox} ${-oy})`;
+            mg.setAttribute('transform', t);
+            og.setAttribute('transform', t);
+            og.setAttribute('opacity', clamp(1 - z * 6, 0, 1));   // outline would scale into huge lines, so fade it fast
+          } else {
+            svg.style.display = 'none';
+          }
+          heroCopy.style.opacity = clamp(1 - z * 8, 0, 1) * ie;
+          heroCopy.style.transform = `translateY(${-z * 40}px)`;
+
+          // world: leaves rush past while zooming and while scrolling fast; the globe grows as you fly in, then settles right
+          const speed = 0.0012 + Math.pow(z, 2) * 0.03 + Math.min(Math.abs(v) * 0.00014, 0.025);
+          const after = smooth(clamp((sc - heroT.top - heroT.len) / (vh * 3), 0, 1));
+          drawWorld(speed, 150 + clamp(sc / maxScroll, 0, 1) * 30, z, 1 + 0.9 * z - 0.95 * after, after * canvas.width * 0.2, now / 1000);
+          canvas.style.opacity = 1 - 0.5 * smooth(clamp((sc - railTop + vh) / vh, 0, 1));
+
+          if (Math.abs(sc - lastSc) > 0.001) {            // only touch the DOM when scrolling
+            lastSc = sc;
+            bar.style.transform = `scaleX(${clamp(sc / maxScroll, 0, 1)})`;
+
+            // story: each word flies in from depth, one after another
+            const q = clamp((sc - storyT.top) / storyT.len, 0, 1);
+            const lit = q * (words.length + 5);
+            for (let i = 0; i < words.length; i++) {
+              const t = smooth(clamp(lit - i, 0, 1));
+              words[i].style.opacity = (0.1 + 0.9 * t).toFixed(3);
+              words[i].style.transform = `translate3d(0, ${(1 - t) * 28}px, ${(1 - t) * -180}px)`;
+            }
+
+            // rail: horizontal travel + 3D coverflow
+            const rp = railDist > 0 ? clamp((sc - railTop) / railDist, 0, 1) : 0;
+            rail.style.transform = `translate3d(${-rp * railDist}px, 0, 0)`;
+            for (const c of cards) {
+              const d = clamp((c.cx - rp * railDist - vw / 2) / (vw * 0.55), -1.5, 1.5);
+              const a = Math.abs(d);
+              c.el.style.transform = `translateZ(${-a * 160}px) rotateY(${-d * 24}deg) scale(${1 - Math.min(a, 1) * 0.08})`;
+              c.el.style.opacity = (0.5 + 0.5 * (1 - Math.min(a, 1))).toFixed(3);
+              c.art.style.setProperty('--px', (-d * 60).toFixed(1));
+            }
+
+            // marquee: scroll sets position, scroll speed skews the text
+            const skew = clamp(v * 0.06, -14, 14);
+            row1.style.transform = `translateX(${-((sc * 0.45) % unit1)}px) skewX(${skew}deg)`;
+            row2.style.transform = `translateX(${((sc * 0.45) % unit2) - unit2}px) skewX(${skew}deg)`;
+          }
+          requestAnimationFrame(frame);
+        }
+
+        layout();
+        addEventListener('load', layout);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+        requestAnimationFrame(frame);
+      }
+    })();
+  </script>
+</body>
+</html>

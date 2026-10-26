@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef6ea">
+  <title>Learn – CarbonLog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400..600&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <style>
+    .jump { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .jump a { text-decoration: none; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line-2); font-size: .92rem; color: var(--muted); }
+    .jump a:hover { color: var(--ink); border-color: var(--ink); }
+    .sec-head { margin-bottom: 28px; }
+    .sec-head .lede { margin-top: 12px; }
+
+    /* scope explorer: three stacked 3D plates */
+    .scopes { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 28px; align-items: center; }
+    @media (max-width: 860px) { .scopes { grid-template-columns: 1fr; } }
+    .stage { height: 360px; display: grid; place-items: center; perspective: 1000px; }
+    .plates { position: relative; width: 210px; height: 210px; transform-style: preserve-3d; transform: rotateX(58deg) rotateZ(-38deg); animation: hover 6s ease-in-out infinite; }
+    @keyframes hover { 50% { transform: rotateX(58deg) rotateZ(-32deg) translateZ(10px); } }
+    .plate { position: absolute; inset: 0; border-radius: 26px; border: 1.5px solid rgba(21, 54, 31, .25); background: rgba(255, 255, 255, .7); box-shadow: 0 10px 30px rgba(21, 54, 31, .08); transform: translateZ(calc(var(--i) * 62px)); transition: transform .5s cubic-bezier(.2, .7, .2, 1), background .3s, box-shadow .3s, border-color .3s; display: grid; place-items: center; cursor: pointer; }
+    .plate span { font: 800 3rem/1 var(--display); color: rgba(21, 54, 31, .35); transform: rotateZ(38deg); }
+    .plate.on { transform: translateZ(calc(var(--i) * 62px + 34px)); background: rgba(198, 236, 170, .95); border-color: #2a7f3e; box-shadow: 0 0 60px rgba(233, 169, 44, .45); }
+    .plate.on span { color: #15361f; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .tabs button { border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 99px; padding: 9px 16px; cursor: pointer; font-weight: 600; }
+    .tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .scope-card { padding: 28px; }
+    .scope-card h3 { font-size: 1.7rem; margin-bottom: 10px; }
+    .scope-card p { color: var(--muted); }
+    .scope-card h4 { margin: 18px 0 8px; font: 500 .78rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips span { padding: 6px 12px; border-radius: 99px; background: rgba(21, 54, 31, .07); font-size: .92rem; }
+    .chips.app span { background: rgba(42, 127, 62, .14); color: #1d5c2e; }
+
+    /* formula */
+    .formula { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 18px; padding: 34px 24px; text-align: center; }
+    .formula .term { padding: 18px 22px; border-radius: 18px; border: 1px solid var(--line-2); background: #fff; min-width: 0; }
+    .formula .term b { display: block; font: 800 clamp(1.5rem, 3.4vw, 2.3rem)/1.1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .formula .term small { color: var(--soft); font: 500 .8rem var(--mono); }
+    .formula .op { font: 800 2rem/1 var(--display); color: var(--accent); }
+    .formula .term.res { border-color: var(--accent); background: #eaf6e3; }
+    .vs { margin-top: 20px; }
+    .card { padding: 24px; }
+    .card h3 { margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 1rem; }
+    .card .src { margin-top: 12px; font: 500 .8rem/1.4 var(--mono); color: var(--accent); }
+    .wins { counter-reset: w; }
+    .wins .card h3::before { counter-increment: w; content: counter(w, decimal-leading-zero) "  "; color: var(--accent); font-family: var(--mono); font-weight: 500; font-size: .9rem; }
+    dl { display: grid; gap: 0; border-top: 1px solid var(--line); }
+    dl > div { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 6px 28px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    @media (max-width: 640px) { dl > div { grid-template-columns: 1fr; } }
+    dt { font: 700 1.1rem/1.3 var(--display); }
+    dd { margin: 0; color: var(--muted); max-width: 68ch; }
+    @media (prefers-reduced-motion: reduce) { .plates { animation: none; } .plate { transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav" id="sitenav">
+    <div class="wrap nav-row">
+      <a class="logo" href="index.html" aria-label="Carbon Pulse, home">Carbon Pulse</a>
+      <nav class="nav-menu" id="navmenu" aria-label="Main">
+        <a href="calculator.html">Quick Check</a>
+        <a href="learn.html" aria-current="page">Learn</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html">Contact Us</a>
+        <a class="btn small primary" href="carbonlog.html">Open CarbonLog</a>
+      </nav>
+      <button class="sound-btn" type="button" data-sound-toggle aria-pressed="true" aria-label="Sound on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wv" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="navmenu"><span class="sr">Menu</span><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="wrap page-head">
+      <p class="kicker">Learn</p>
+      <h1>Carbon basics for<br>small companies</h1>
+      <p class="lede">Banks, big customers and new rules ask more and more companies for emission numbers. Here is what the words mean and how to get your first figure.</p>
+      <nav class="jump" aria-label="On this page">
+        <a href="#scopes">The three scopes</a><a href="#calc">How it’s calculated</a><a href="#data">Where to find data</a><a href="#wins">Quick wins</a><a href="#words">Glossary</a>
+      </nav>
+    </section>
+
+    <section class="wrap section" id="scopes">
+      <div class="sec-head">
+        <p class="kicker rv">The three scopes</p>
+        <h2 class="rv">Where emissions come from</h2>
+        <p class="lede rv">The GHG Protocol sorts a company’s emissions into three groups called scopes. Pick one to see what belongs in it.</p>
+      </div>
+      <div class="scopes">
+        <div class="stage rv" aria-hidden="true">
+          <div class="plates">
+            <div class="plate" data-s="3" style="--i:0"><span>3</span></div>
+            <div class="plate" data-s="2" style="--i:1"><span>2</span></div>
+            <div class="plate on" data-s="1" style="--i:2"><span>1</span></div>
+          </div>
+        </div>
+        <div class="rv">
+          <div class="tabs" role="tablist" aria-label="Scopes">
+            <button type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="scope-panel">Scope 1</button>
+            <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="scope-panel">Scope 2</button>
+            <button type="button" role="tab" id="tab-3" aria-selected="false" aria-controls="scope-panel">Scope 3</button>
+          </div>
+          <div class="panel scope-card" id="scope-panel" role="tabpanel" aria-labelledby="tab-1">
+            <h3 id="sc-title"></h3>
+            <p id="sc-text"></p>
+            <h4>Examples</h4>
+            <div class="chips" id="sc-ex"></div>
+            <h4>In CarbonLog</h4>
+            <div class="chips app" id="sc-app"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="calc">
+      <div class="sec-head">
+        <p class="kicker rv">How it’s calculated</p>
+        <h2 class="rv">One multiplication</h2>
+        <p class="lede rv">Every entry in CarbonLog is an activity times an emission factor. Here is the example from the home page.</p>
+      </div>
+      <div class="panel formula rv">
+        <div class="term"><b>2,400 kWh</b><small>Activity</small></div>
+        <span class="op" aria-hidden="true">×</span>
+        <div class="term"><b>0.38</b><small>kg CO₂ per kWh</small></div>
+        <span class="op" aria-hidden="true">=</span>
+        <div class="term res"><b>912 kg CO₂</b><small>Emissions</small></div>
+      </div>
+      <div class="grid-2 vs">
+        <div class="panel card rv"><h3>Activity-based</h3><p>You measure what happened: kWh, kilometres or litres. This is the more accurate way, and CarbonLog uses it for energy and travel.</p></div>
+        <div class="panel card rv"><h3>Spend-based</h3><p>You use what you paid in euros and an average factor per euro. It is quick but rough, so CarbonLog uses it only for purchases.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="data">
+      <div class="sec-head">
+        <p class="kicker rv">Where to find data</p>
+        <h2 class="rv">You already have most of it</h2>
+      </div>
+      <div class="grid-2">
+        <div class="panel card rv"><h3>Energy bills</h3><p>Electricity and gas bills list your consumption in kWh for each billing period.</p><p class="src">→ Electricity, Natural gas</p></div>
+        <div class="panel card rv"><h3>Mileage and fuel records</h3><p>Logbooks, fuel cards or expense claims show how far company cars travelled.</p><p class="src">→ Car travel</p></div>
+        <div class="panel card rv"><h3>Travel bookings</h3><p>Train and flight bookings show the route; look up the distance in kilometres.</p><p class="src">→ Train travel, Flights</p></div>
+        <div class="panel card rv"><h3>Invoices and accounting</h3><p>Your bookkeeping shows what you spent on goods and services each month.</p><p class="src">→ Purchased goods</p></div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="wins">
+      <div class="sec-head">
+        <p class="kicker rv">Quick wins</p>
+        <h2 class="rv">Six first steps that rarely cost much</h2>
+      </div>
+      <div class="grid-3 wins">
+        <div class="panel card rv"><h3>Switch your tariff</h3><p>Ask your supplier for a certified green electricity tariff. It is often the biggest single change for an office.</p></div>
+        <div class="panel card rv"><h3>Light with LED</h3><p>Replace old bulbs and tubes, and add timers or motion sensors in rooms that are often empty.</p></div>
+        <div class="panel card rv"><h3>Heat smarter</h3><p>Lower the setpoint a little and add night and weekend schedules.</p></div>
+        <div class="panel card rv"><h3>Take the train</h3><p>For trips within the country or to neighbouring cities, the train is usually the low-carbon choice.</p></div>
+        <div class="panel card rv"><h3>Meet online</h3><p>Turn routine meetings into video calls and bundle the rest into fewer trips.</p></div>
+        <div class="panel card rv"><h3>Buy less, buy better</h3><p>Choose used or refurbished equipment and ask suppliers about their own emissions.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="words">
+      <div class="sec-head">
+        <p class="kicker rv">Glossary</p>
+        <h2 class="rv">Words you will meet</h2>
+      </div>
+      <dl class="rv">
+        <div><dt>CO₂e</dt><dd>Carbon dioxide equivalent. Other greenhouse gases, such as methane, are converted into the amount of CO₂ with the same warming effect, so everything can be added up.</dd></div>
+        <div><dt>Emission factor</dt><dd>How much greenhouse gas one unit of an activity causes, for example kg CO₂ per kWh of electricity.</dd></div>
+        <div><dt>Baseline year</dt><dd>The year you compare against when you set a target. CarbonLog uses the previous calendar year.</dd></div>
+        <div><dt>Net zero</dt><dd>Cutting emissions as far as possible and balancing only the small remainder with permanent removals.</dd></div>
+        <div><dt>Offsetting</dt><dd>Paying for emission cuts or removals somewhere else. It does not reduce your own emissions, so treat it as a last step.</dd></div>
+        <div><dt>Carbon neutral</dt><dd>A claim that emissions are balanced, often with offsets. Claims like this are increasingly restricted in the EU, so be careful how you use them.</dd></div>
+        <div><dt>ESG</dt><dd>Environmental, Social and Governance: the three areas that investors, banks and customers look at.</dd></div>
+        <div><dt>GHG Protocol</dt><dd>The most widely used standard for measuring company greenhouse gas emissions. It defines Scopes 1, 2 and 3.</dd></div>
+        <div><dt>CSRD</dt><dd>The EU Corporate Sustainability Reporting Directive. It sets reporting rules mainly for larger companies. Its thresholds and timeline have changed, so check the current rules for your company.</dd></div>
+        <div><dt>VSME</dt><dd>A voluntary sustainability reporting standard for small and medium-sized companies, published by EFRAG. It helps answer data requests from banks and larger customers.</dd></div>
+      </dl>
+      <p class="rv" style="margin-top:36px"><a class="btn primary" href="calculator.html">Try the Quick Check</a></p>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-grid">
+      <div><a class="logo" href="index.html">Carbon Pulse</a><p>Makers of CarbonLog, the carbon footprint logger for small companies.</p></div>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="calculator.html">Quick Check</a><a href="learn.html">Learn</a><a href="pricing.html">Pricing</a><a href="contact.html">Contact Us</a><a href="carbonlog.html">Open CarbonLog</a><a href="nova.html">Carbon Pulse 3D demo</a>
+      </nav>
+      <p class="fine">A student project at ESB Business School, Reutlingen University. CarbonLog shows estimates, not certified emission reports.</p>
+    </div>
+  </footer>
+
+  <script src="sound.js"></script>
+  <script src="site.js"></script>
+  <script>
+    (() => {
+      const SCOPES = {
+        1: { title: 'Scope 1 · Direct emissions', text: 'Emissions from sources your company owns or controls, such as burning fuel on site or in your own vehicles.',
+             ex: ['Gas boiler', 'Company cars and vans', 'Generators'], app: ['Natural gas', 'Car travel in company cars'] },
+        2: { title: 'Scope 2 · Energy you buy', text: 'Indirect emissions from producing the electricity, heat, steam or cooling that your company buys and uses.',
+             ex: ['Electricity', 'District heating'], app: ['Electricity'] },
+        3: { title: 'Scope 3 · Your value chain', text: 'All other indirect emissions, before and after your company in the value chain. For many companies this is the largest part.',
+             ex: ['Business travel', 'Purchased goods', 'Commuting', 'Waste'], app: ['Flights', 'Train travel', 'Purchased goods', 'Car trips in cars you don’t own'] },
+      };
+      const tabs = [...document.querySelectorAll('[role="tab"]')], plates = [...document.querySelectorAll('.plate')];
+      const panel = document.getElementById('scope-panel');
+      const chips = (el, list) => { el.textContent = ''; for (const s of list) { const c = document.createElement('span'); c.textContent = s; el.appendChild(c); } };
+      function show(n, focus) {
+        const s = SCOPES[n];
+        document.getElementById('sc-title').textContent = s.title;
+        document.getElementById('sc-text').textContent = s.text;
+        chips(document.getElementById('sc-ex'), s.ex);
+        chips(document.getElementById('sc-app'), s.app);
+        tabs.forEach((t) => { const on = t.id === 'tab-' + n; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; if (on && focus) t.focus(); });
+        panel.setAttribute('aria-labelledby', 'tab-' + n);
+        plates.forEach((p) => p.classList.toggle('on', p.dataset.s === String(n)));
+      }
+      tabs.forEach((t, i) => {
+        t.addEventListener('click', () => show(i + 1));
+        t.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); show(((i + (e.key === 'ArrowRight' ? 1 : 2)) % 3) + 1, true); }
+        });
+      });
+      plates.forEach((p) => p.addEventListener('click', () => show(Number(p.dataset.s))));
+      show(1);
+    })();
+  </script>
+</body>
+</html>

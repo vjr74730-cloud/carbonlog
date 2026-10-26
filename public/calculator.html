@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef6ea">
+  <title>Quick Check – CarbonLog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400..600&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <style>
+    .calc { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start; }
+    @media (max-width: 900px) { .calc { grid-template-columns: 1fr; } }
+    .inputs { padding: 10px 26px; }
+    .inputs-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .tag { font: 500 .72rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 6px 10px; border-radius: 99px; background: var(--ink); color: #fff; }
+    .item { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 8px 18px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--line); }
+    .item:last-child { border-bottom: 0; }
+    .item .nm { font-weight: 600; }
+    .item .hint { display: block; font-size: .88rem; color: var(--soft); }
+    .num-in { position: relative; }
+    .num-in input { padding-right: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+    .num-in span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--soft); font: 500 .85rem var(--mono); pointer-events: none; }
+    .item input[type="range"] { grid-column: 1 / -1; padding: 0; border: 0; background: transparent; accent-color: #2a7f3e; height: 24px; }
+    @media (max-width: 520px) { .item { grid-template-columns: 1fr; } }
+
+    .result { position: sticky; top: 96px; padding: 26px; display: grid; gap: 20px; }
+    .total b { display: block; font: 800 clamp(3rem, 7vw, 4.6rem)/1 var(--display); letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+    .total span { color: var(--muted); }
+    .bars { display: grid; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 76px; gap: 10px; align-items: center; font-size: .92rem; }
+    .bar-row .lb { color: var(--muted); }
+    .bar-row .tr { height: 10px; border-radius: 99px; background: rgba(21, 54, 31, .08); overflow: hidden; }
+    .bar-row .fl { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .35s ease; }
+    .bar-row.top .fl { background: var(--sun); }
+    .bar-row .vl { text-align: right; font: 500 .85rem var(--mono); font-variant-numeric: tabular-nums; }
+    .tip { padding: 16px 18px; border-radius: 16px; background: #eaf6e3; border: 1px solid rgba(42, 127, 62, .35); }
+    .tip b { color: var(--accent); }
+    .cube-box { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: center; }
+    .stage { height: 150px; display: grid; place-items: center; perspective: 700px; }
+    .cube { --s: 80px; width: var(--s); height: var(--s); position: relative; transform-style: preserve-3d; animation: spin 16s linear infinite; transition: width .5s, height .5s; }
+    .cube i { position: absolute; inset: 0; border: 1.5px solid rgba(42, 127, 62, .85); background: rgba(111, 174, 47, .16); }
+    .cube i:nth-child(1) { transform: translateZ(calc(var(--s) / 2)); }
+    .cube i:nth-child(2) { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+    .cube i:nth-child(3) { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+    .cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+    .cube i:nth-child(5) { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
+    .cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+    @keyframes spin { from { transform: rotateX(-24deg) rotateY(0deg); } to { transform: rotateX(-24deg) rotateY(360deg); } }
+    .cube-box p { color: var(--muted); font-size: .95rem; }
+    .factors { margin-top: 12px; }
+    .factors table { width: 100%; min-width: 480px; border-collapse: collapse; }
+    .factors th, .factors td { padding: 12px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+    .factors td.r { text-align: right; font-variant-numeric: tabular-nums; }
+    .factors thead th { font: 500 .78rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--panel-2); }
+    @media (prefers-reduced-motion: reduce) { .cube { animation: none; transform: rotateX(-24deg) rotateY(35deg); } }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav" id="sitenav">
+    <div class="wrap nav-row">
+      <a class="logo" href="index.html" aria-label="Carbon Pulse, home">Carbon Pulse</a>
+      <nav class="nav-menu" id="navmenu" aria-label="Main">
+        <a href="calculator.html" aria-current="page">Quick Check</a>
+        <a href="learn.html">Learn</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html">Contact Us</a>
+        <a class="btn small primary" href="carbonlog.html">Open CarbonLog</a>
+      </nav>
+      <button class="sound-btn" type="button" data-sound-toggle aria-pressed="true" aria-label="Sound on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wv" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="navmenu"><span class="sr">Menu</span><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="wrap page-head">
+      <p class="kicker">Quick Check</p>
+      <h1>How big is your<br>monthly footprint?</h1>
+      <p class="lede">Move the sliders to match one typical month. You get an instant estimate with the same factors CarbonLog uses. Nothing is saved.</p>
+    </section>
+
+    <section class="wrap">
+      <div class="calc">
+        <div class="panel inputs">
+          <div class="inputs-head"><b>Your month</b><span class="tag" id="state">Example values</span></div>
+          <div id="items"></div>
+          <div class="inputs-head" style="border:0"><button type="button" class="btn small" id="reset">Reset to example</button><button type="button" class="btn small" id="zero">Clear all</button></div>
+        </div>
+
+        <aside class="panel result" aria-live="polite">
+          <div class="total"><span>Estimated CO₂ per month</span><b id="total">0 kg</b><span id="year">0 t per year</span></div>
+          <div class="bars" id="bars"></div>
+          <p class="tip" id="tip"></p>
+          <div class="cube-box">
+            <div class="stage" aria-hidden="true"><div class="cube" id="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+            <p id="cubetext"></p>
+          </div>
+          <a class="btn primary" href="carbonlog.html">Track it every month in CarbonLog</a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <p class="kicker rv">The factors behind it</p>
+      <h2 class="rv" style="margin-bottom:20px">Same numbers as the app</h2>
+      <p class="lede rv" style="margin-bottom:24px">These are approximate average factors. Check them against an official source, such as the German Environment Agency (UBA) or the UK’s DEFRA tables, before you report.</p>
+      <div class="table-wrap rv factors">
+        <table>
+          <caption class="sr">Emission factors used for the estimate</caption>
+          <thead><tr><th scope="col">Activity</th><th scope="col">Unit</th><th scope="col" style="text-align:right">kg CO₂ per unit</th></tr></thead>
+          <tbody id="ftable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-grid">
+      <div><a class="logo" href="index.html">Carbon Pulse</a><p>Makers of CarbonLog, the carbon footprint logger for small companies.</p></div>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="calculator.html">Quick Check</a><a href="learn.html">Learn</a><a href="pricing.html">Pricing</a><a href="contact.html">Contact Us</a><a href="carbonlog.html">Open CarbonLog</a><a href="nova.html">Carbon Pulse 3D demo</a>
+      </nav>
+      <p class="fine">A student project at ESB Business School, Reutlingen University. CarbonLog shows estimates, not certified emission reports.</p>
+    </div>
+  </footer>
+
+  <script src="sound.js"></script>
+  <script src="site.js"></script>
+  <script>
+    (() => {
+      // Same approximate factors as db/seed.js (kg CO2 per unit).
+      const ITEMS = [
+        { k: 'electricity',     name: 'Electricity',  unit: 'kWh', f: .38,  max: 20000, step: 50, ex: 2000, hint: 'From your electricity bill',
+          tip: 'Ask your supplier about a certified green electricity tariff, and switch lights to LED.' },
+        { k: 'natural_gas',     name: 'Natural gas',  unit: 'kWh', f: .201, max: 20000, step: 50, ex: 1500, hint: 'Heating, from your gas bill',
+          tip: 'Lower the heating a little, set night and weekend schedules, and check the insulation.' },
+        { k: 'car_travel',      name: 'Car travel',   unit: 'km',  f: .17,  max: 5000,  step: 10, ex: 600,  hint: 'Business trips by car',
+          tip: 'Combine trips, and take the train or a video call where you can.' },
+        { k: 'train_travel',    name: 'Train travel', unit: 'km',  f: .035, max: 5000,  step: 10, ex: 300,  hint: 'Business trips by train',
+          tip: 'Train travel is already a low-carbon choice. Use it for more of your trips.' },
+        { k: 'flight',          name: 'Flights',      unit: 'km',  f: .15,  max: 20000, step: 50, ex: 0,    hint: 'Flight distance per person',
+          tip: 'Replace short flights with the train and bundle meetings into fewer trips.' },
+        { k: 'purchased_goods', name: 'Purchases',    unit: '€',   f: .4,   max: 20000, step: 50, ex: 1500, hint: 'Spend on goods and services',
+          tip: 'Buy less, choose used or refurbished, and ask suppliers for their own emission data.' },
+      ];
+      const fmt = (n, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+      const box = document.getElementById('items');
+      for (const it of ITEMS) {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<label for="in-${it.k}"><span class="nm"></span><span class="hint"></span></label>
+          <div class="num-in"><input id="in-${it.k}" type="number" inputmode="decimal" min="0" max="${it.max * 10}" step="any"><span></span></div>
+          <input id="rg-${it.k}" type="range" min="0" max="${it.max}" step="${it.step}">`;
+        row.querySelector('.nm').textContent = it.name;
+        row.querySelector('.hint').textContent = it.hint;
+        row.querySelector('.num-in span').textContent = it.unit;
+        row.querySelector('input[type="range"]').setAttribute('aria-label', `${it.name} in ${it.unit}`);
+        box.appendChild(row);
+        it.num = row.querySelector('input[type="number"]'); it.rng = row.querySelector('input[type="range"]');
+        it.num.addEventListener('input', () => { it.rng.value = Math.min(it.max, Number(it.num.value) || 0); edited(); });
+        it.rng.addEventListener('input', () => { it.num.value = it.rng.value; edited(); });
+      }
+      const ft = document.getElementById('ftable');
+      for (const it of ITEMS) {
+        const tr = document.createElement('tr');
+        for (const [v, cls] of [[it.name, ''], [it.unit === '€' ? 'EUR' : it.unit, ''], [String(it.f), 'r']]) { const td = document.createElement('td'); td.textContent = v; if (cls) td.className = cls; tr.appendChild(td); }
+        ft.appendChild(tr);
+      }
+      const state = document.getElementById('state');
+      function setAll(fn) { for (const it of ITEMS) { const v = fn(it); it.num.value = v; it.rng.value = Math.min(it.max, v); } }
+      function edited() { state.textContent = 'Your values'; render(); }
+      document.getElementById('reset').addEventListener('click', () => { setAll((it) => it.ex); state.textContent = 'Example values'; render(); });
+      document.getElementById('zero').addEventListener('click', () => { setAll(() => 0); state.textContent = 'Your values'; render(); });
+
+      const bars = document.getElementById('bars');
+      function render() {
+        const rows = ITEMS.map((it) => {
+          const v = Math.max(0, Number(it.num.value) || 0);
+          return { it, kg: v * it.f };
+        });
+        const total = rows.reduce((s, r) => s + r.kg, 0);
+        document.getElementById('total').textContent = `${fmt(total)} kg`;
+        const tYear = total * 12 / 1000;
+        document.getElementById('year').textContent = `≈ ${fmt(tYear, 1)} t CO₂ per year`;
+        rows.sort((a, b) => b.kg - a.kg);
+        const max = rows[0].kg || 1;
+        bars.textContent = '';
+        rows.forEach((r, i) => {
+          const d = document.createElement('div');
+          d.className = 'bar-row' + (i === 0 && r.kg > 0 ? ' top' : '');
+          const lb = document.createElement('span'); lb.className = 'lb'; lb.textContent = r.it.name;
+          const tr = document.createElement('span'); tr.className = 'tr';
+          const fl = document.createElement('span'); fl.className = 'fl'; fl.style.width = (r.kg / max * 100).toFixed(1) + '%'; tr.appendChild(fl);
+          const vl = document.createElement('span'); vl.className = 'vl'; vl.textContent = `${fmt(r.kg)} kg`;
+          d.append(lb, tr, vl); bars.appendChild(d);
+        });
+        const tip = document.getElementById('tip');
+        tip.textContent = '';
+        if (total > 0) {
+          const top = rows[0], share = Math.round(top.kg / total * 100);
+          const b = document.createElement('b'); b.textContent = `${top.it.name} is ${share} % of your total. `;
+          tip.append(b, document.createTextNode(top.it.tip));
+        } else tip.textContent = 'Enter at least one activity to see where your emissions come from.';
+        // 1 t of CO2 fills about 556 m³ as a gas at 25 °C and normal pressure (44.01 g/mol, 24.47 L/mol).
+        const side = Math.cbrt(556 * tYear);
+        document.getElementById('cube').style.setProperty('--s', Math.round(36 + 84 * side / (side + 14)) + 'px');
+        document.getElementById('cubetext').textContent = tYear > 0
+          ? `As a gas at 25 °C, one year of these emissions would fill a cube about ${fmt(side)} m wide. That equals driving about ${fmt(total * 12 / .17)} km in an average car.`
+          : 'Your yearly CO₂ cube appears here.';
+      }
+      setAll((it) => it.ex);
+      render();
+    })();
+  </script>
+</body>
+</html>

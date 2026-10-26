@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef6ea">
+  <title>Pricing – CarbonLog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400..600&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <style>
+    .toggle { display: inline-flex; padding: 4px; margin-top: 28px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--panel); }
+    .toggle button { border: 0; background: transparent; padding: 10px 18px; border-radius: 999px; cursor: pointer; font-weight: 600; color: var(--muted); }
+    .toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+    .save { font: 500 .72rem/1 var(--mono); letter-spacing: .06em; color: var(--accent); margin-left: 4px; }
+    .toggle button[aria-pressed="true"] .save { color: #ffe08a; }
+
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; align-items: stretch; perspective: 1400px; }
+    .plan { position: relative; display: flex; flex-direction: column; gap: 18px; padding: 32px 28px 28px; border-radius: 26px; border: 1px solid var(--glass-border); background: var(--glass-bg); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .2s ease-out, border-color .2s; min-width: 0; }
+    .plan:hover { border-color: var(--line-2); }
+    .plan.pop { border-color: rgba(42, 127, 62, .55); background: linear-gradient(160deg, rgba(214, 240, 200, .8), rgba(255, 255, 255, .45) 60%); box-shadow: 0 26px 70px rgba(21, 54, 31, .18); }
+    .badge { position: absolute; top: -13px; left: 28px; background: var(--accent); color: #fff; font: 500 .72rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; padding: 7px 12px; border-radius: 99px; }
+    .for { font: 500 .78rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+    .plan h2 { font-size: 2rem; }
+    .plan > p { color: var(--muted); }
+    .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 4.4rem; }
+    .price b { font: 800 3.4rem/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .price span { color: var(--soft); }
+    .price small { flex-basis: 100%; font: 500 .8rem/1.3 var(--mono); color: var(--soft); }
+    .plan ul { list-style: none; padding: 18px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 11px; }
+    .plan li { display: flex; gap: 10px; color: var(--muted); font-size: 1rem; }
+    .plan li::before { content: ""; flex: 0 0 18px; height: 18px; margin-top: 3px; border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-4.9' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; }
+    .plan .btn { margin-top: auto; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--panel-2); }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; }
+    th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--line); }
+    thead th { font: 500 .8rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+    tbody th { font-weight: 500; color: var(--muted); }
+    tbody tr:last-child > * { border-bottom: 0; }
+    td { font-variant-numeric: tabular-nums; }
+    td.y { color: var(--accent); font-weight: 700; }
+    td.n { color: var(--soft); }
+    .col-pro { background: rgba(42, 127, 62, .07); }
+
+    .faq { display: grid; gap: 12px; max-width: 820px; }
+    details { border: 1px solid var(--line); border-radius: 18px; background: var(--panel-2); padding: 0 22px; }
+    summary { cursor: pointer; padding: 18px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font: 400 1.4rem/1 var(--body); color: var(--accent); transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { color: var(--muted); padding-bottom: 18px; max-width: 64ch; }
+    .note { margin-top: 28px; }
+    @media (prefers-reduced-motion: reduce) { .plan { transform: none !important; transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav" id="sitenav">
+    <div class="wrap nav-row">
+      <a class="logo" href="index.html" aria-label="Carbon Pulse, home">Carbon Pulse</a>
+      <nav class="nav-menu" id="navmenu" aria-label="Main">
+        <a href="calculator.html">Quick Check</a>
+        <a href="learn.html">Learn</a>
+        <a href="pricing.html" aria-current="page">Pricing</a>
+        <a href="contact.html">Contact Us</a>
+        <a class="btn small primary" href="carbonlog.html">Open CarbonLog</a>
+      </nav>
+      <button class="sound-btn" type="button" data-sound-toggle aria-pressed="true" aria-label="Sound on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wv" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="navmenu"><span class="sr">Menu</span><i></i><i></i></button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="wrap page-head">
+      <p class="kicker">Pricing</p>
+      <h1>Plans that grow<br>with you</h1>
+      <p class="lede">Start free on your own. Upgrade when your team or your reporting needs grow. Prices exclude VAT.</p>
+      <div class="toggle" role="group" aria-label="Billing period">
+        <button type="button" id="bill-m" aria-pressed="true">Monthly</button>
+        <button type="button" id="bill-y" aria-pressed="false">Yearly <span class="save">2 months free</span></button>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="plans">
+        <article class="plan rv">
+          <p class="for">For individuals</p>
+          <h2>Free</h2>
+          <p>Try CarbonLog and learn where your own footprint comes from.</p>
+          <div class="price"><b>€0</b><span>forever</span><small>No card needed</small></div>
+          <ul>
+            <li>1 user</li>
+            <li>Up to 30 entries per month</li>
+            <li>Dashboard with total, sources and monthly trend</li>
+            <li>All six activity types</li>
+            <li>Built-in emission factors</li>
+          </ul>
+          <a class="btn" href="carbonlog.html">Start free</a>
+        </article>
+
+        <article class="plan pop rv">
+          <span class="badge">Most popular</span>
+          <p class="for">For small shops</p>
+          <h2>Pro</h2>
+          <p>For cafés, studios, workshops and small offices that want a clear yearly number.</p>
+          <div class="price"><b id="pro-price">€12</b><span id="pro-per">per month</span><small id="pro-note">Billed monthly · cancel any time</small></div>
+          <ul>
+            <li>Everything in Free</li>
+            <li>Up to 5 users</li>
+            <li>Unlimited entries</li>
+            <li>Yearly reduction targets with progress</li>
+            <li>CSV export for your accountant or bank</li>
+            <li>Edit emission factors with source and year</li>
+            <li>Email support within 2 working days</li>
+          </ul>
+          <a class="btn primary" href="contact.html#pro">Choose Pro</a>
+        </article>
+
+        <article class="plan rv">
+          <p class="for">For large organizations</p>
+          <h2>Enterprise</h2>
+          <p>For companies with several sites, departments or reporting duties.</p>
+          <div class="price"><b>Custom</b><small>From €299 per month, billed yearly</small></div>
+          <ul>
+            <li>Everything in Pro</li>
+            <li>Unlimited users</li>
+            <li>Several sites and departments</li>
+            <li>Single sign-on (SSO)</li>
+            <li>API access to your data</li>
+            <li>Your own emission factor sets</li>
+            <li>Onboarding and a named contact</li>
+          </ul>
+          <a class="btn" href="contact.html#enterprise">Talk to us</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <p class="kicker rv">Compare</p>
+      <h2 class="rv" style="margin-bottom:28px">What each plan includes</h2>
+      <div class="table-wrap rv">
+        <table>
+          <caption class="sr">Features by plan</caption>
+          <thead><tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col" class="col-pro">Pro</th><th scope="col">Enterprise</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Users</th><td>1</td><td class="col-pro">Up to 5</td><td>Unlimited</td></tr>
+            <tr><th scope="row">Entries per month</th><td>30</td><td class="col-pro">Unlimited</td><td>Unlimited</td></tr>
+            <tr><th scope="row">Dashboard and charts</th><td class="y">✓</td><td class="y col-pro">✓</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Six activity types</th><td class="y">✓</td><td class="y col-pro">✓</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Yearly reduction targets</th><td class="n">–</td><td class="y col-pro">✓</td><td class="y">✓</td></tr>
+            <tr><th scope="row">CSV export</th><td class="n">–</td><td class="y col-pro">✓</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Edit emission factors</th><td class="n">–</td><td class="y col-pro">✓</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Several sites and departments</th><td class="n">–</td><td class="n col-pro">–</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Single sign-on and API</th><td class="n">–</td><td class="n col-pro">–</td><td class="y">✓</td></tr>
+            <tr><th scope="row">Support</th><td>Learn guides</td><td class="col-pro">Email, 2 working days</td><td>Named contact</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <p class="kicker rv">Questions</p>
+      <h2 class="rv" style="margin-bottom:28px">Before you choose</h2>
+      <div class="faq">
+        <details class="rv"><summary>Can I switch plans later?</summary><p>Yes. You can move up or down at any time, and your entries stay where they are.</p></details>
+        <details class="rv"><summary>Are the numbers certified?</summary><p>No. CarbonLog gives estimates based on approximate emission factors. They are a good first step, but they are not a certified emissions report.</p></details>
+        <details class="rv"><summary>Who owns my data?</summary><p>You do. You can edit or delete every entry, and Pro and Enterprise let you export everything as CSV.</p></details>
+        <details class="rv"><summary>What does “yearly” billing save?</summary><p>Pro costs €120 a year instead of €144 when paid monthly, which is two months free.</p></details>
+      </div>
+      <p class="fine note">CarbonLog is a student project at ESB Business School, Reutlingen University. These prices show the planned business model; no payments are taken on this site.</p>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-grid">
+      <div><a class="logo" href="index.html">Carbon Pulse</a><p>Makers of CarbonLog, the carbon footprint logger for small companies.</p></div>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="calculator.html">Quick Check</a><a href="learn.html">Learn</a><a href="pricing.html">Pricing</a><a href="contact.html">Contact Us</a><a href="carbonlog.html">Open CarbonLog</a><a href="nova.html">Carbon Pulse 3D demo</a>
+      </nav>
+      <p class="fine">A student project at ESB Business School, Reutlingen University. CarbonLog shows estimates, not certified emission reports.</p>
+    </div>
+  </footer>
+
+  <script src="sound.js"></script>
+  <script src="site.js"></script>
+  <script>
+    (() => {
+      // monthly / yearly switch for Pro
+      const m = document.getElementById('bill-m'), y = document.getElementById('bill-y');
+      const price = document.getElementById('pro-price'), per = document.getElementById('pro-per'), note = document.getElementById('pro-note');
+      function set(yearly) {
+        m.setAttribute('aria-pressed', String(!yearly)); y.setAttribute('aria-pressed', String(yearly));
+        price.textContent = yearly ? '€10' : '€12';
+        per.textContent = 'per month';
+        note.textContent = yearly ? '€120 billed once a year' : 'Billed monthly · cancel any time';
+      }
+      m.addEventListener('click', () => set(false));
+      y.addEventListener('click', () => set(true));
+
+      // gentle 3D tilt on the plan cards
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(pointer: fine)').matches) {
+        document.querySelectorAll('.plan').forEach((card) => {
+          card.addEventListener('pointermove', (e) => {
+            const r = card.getBoundingClientRect();
+            const nx = (e.clientX - r.left) / r.width - .5, ny = (e.clientY - r.top) / r.height - .5;
+            card.style.setProperty('--ry', (nx * 8).toFixed(2) + 'deg');
+            card.style.setProperty('--rx', (-ny * 6).toFixed(2) + 'deg');
+          });
+          card.addEventListener('pointerleave', () => { card.style.setProperty('--ry', '0deg'); card.style.setProperty('--rx', '0deg'); });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
