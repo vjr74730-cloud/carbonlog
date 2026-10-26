@@ -102,7 +102,7 @@
 
   <section class="intro">
     <h1>CarbonLog – annotated wireframes</h1>
-    <p>Low-fidelity screens of the CarbonLog app as it is implemented in <code>public/carbonlog.html</code>. Numbers mark controls and states; each note names the requirement from <code>docs/business-case.md</code> (R1–R12) and the API call behind it.</p>
+    <p>Low-fidelity screens of the CarbonLog app as it is implemented in <code>public/carbonlog.html</code>. Numbers mark controls and states; each note names the requirement from <code>docs/business-case.md</code> (R1–R13) and the API call behind it.</p>
     <div class="legend"><span><i class="m">1</i> numbered callout</span><span><span class="req">R4</span> requirement it serves</span><span><span class="banner" style="padding:0 6px">red</span> error state</span></div>
   </section>
 
@@ -119,7 +119,7 @@
           <rect x="240" y="272" width="190" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="335" y="300" text-anchor="middle" font-weight="700">Settings (W5)</text><text x="335" y="320" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/factors, /targets</text>
           <rect x="520" y="110" width="210" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="138" text-anchor="middle" font-weight="700">Add / Edit dialog (W3)</text><text x="625" y="158" text-anchor="middle" font-size="12" fill="#5b616b">POST or PUT /api/entries</text>
           <rect x="520" y="200" width="210" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="225" text-anchor="middle" font-weight="700">Confirm delete (W4)</text><text x="625" y="243" text-anchor="middle" font-size="12" fill="#5b616b">DELETE /api/entries/:id</text>
-          <rect x="520" y="280" width="210" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="305" text-anchor="middle" font-weight="700">CSV download</text><text x="625" y="323" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/export.csv</text>
+          <rect x="520" y="280" width="210" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="303" text-anchor="middle" font-weight="700">CSV export / import (W2b)</text><text x="625" y="322" text-anchor="middle" font-size="11" fill="#5b616b">GET export.csv · POST entries/import</text>
           <rect x="820" y="110" width="200" height="64" rx="10" fill="#e8efff" stroke="#1d4ed8" stroke-width="2"/><text x="920" y="138" text-anchor="middle" font-weight="700" fill="#1d4ed8">Validation errors</text><text x="920" y="158" text-anchor="middle" font-size="12" fill="#1d4ed8">400 { error, fields }</text>
           <rect x="820" y="200" width="200" height="56" rx="10" fill="#fdecea" stroke="#b42318" stroke-width="2"/><text x="920" y="225" text-anchor="middle" font-weight="700" fill="#b42318">Error banner (W6)</text><text x="920" y="243" text-anchor="middle" font-size="12" fill="#b42318">404 / 500 / offline</text>
           <rect x="820" y="20" width="200" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="920" y="45" text-anchor="middle" font-weight="700">List refreshes</text><text x="920" y="63" text-anchor="middle" font-size="12" fill="#5b616b">201 / 200 / 204</text>
@@ -195,7 +195,7 @@
           <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><div class="tabs"><span class="pill">Dashboard</span><span class="pill on">Entries</span><span class="pill">Settings</span></div></div>
           <div class="body">
             <div class="h">Entries</div>
-            <div class="bar"><span class="btn primary anchor">Add entry<i class="m">1</i></span><span class="btn anchor">Export CSV<i class="m">2</i></span></div>
+            <div class="bar"><span class="btn primary anchor">Add entry<i class="m">1</i></span><span class="btn anchor">Export CSV<i class="m">2</i></span><span class="btn anchor">Import CSV<i class="m">5</i></span><span class="muted" style="align-self:center;text-decoration:underline">Download template</span></div>
             <div class="tbl anchor"><table>
               <thead><tr><th>Date</th><th>Category</th><th class="n">Amount</th><th class="n">CO₂ (kg)</th><th>Note</th><th></th></tr></thead>
               <tbody>
@@ -211,6 +211,26 @@
         <li><i class="m">2</i><div><b>Export CSV</b>Downloads every entry: <code>GET /api/export.csv</code>. Formulas in notes are neutralised. <span class="req">R10</span></div></li>
         <li><i class="m">3</i><div><b>Table</b>CO₂ is the value stored when the entry was saved; changing a factor later does not change it. Edit opens W3 pre-filled; Delete opens W4. <span class="req">R5 R6 R9</span></div></li>
         <li><i class="m">4</i><div><b>Empty state</b>Shown instead of an empty table on first use. <span class="req">R12</span></div></li>
+        <li><i class="m">5</i><div><b>Import CSV</b>Opens the file picker; the file text is sent to <code>POST /api/entries/import</code>. "Download template" gives a ready-made file with the right columns. Result: see W2b. <span class="req">R13</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W2b import result -->
+  <section class="wf" id="w2b">
+    <header><h2><b>W2b</b>CSV import: success, and nothing imported</h2><p>The import is all-or-nothing. The user either sees how many entries were added, or a list of the exact rows to fix, and the data stays clean.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page"><div class="body">
+          <div class="h">Entries</div>
+          <div class="bar"><span class="btn primary">Add entry</span><span class="btn">Export CSV</span><span class="btn">Import CSV</span></div>
+          <div class="anchor" style="border:1.5px solid var(--ok);background:#eaf6e3;color:var(--ok);border-radius:8px;padding:8px 12px;font-size:.82rem">Imported 12 entries from "bills-2026-q1.csv".<i class="m">1</i></div>
+          <div class="banner anchor"><div>Nothing was imported: 2 of 14 rows have errors</div><ul style="margin:4px 0 0;padding-left:1.2em"><li>Row 3: Amount must be a number greater than 0</li><li>Row 9: Unit "km" is not valid for electricity. Allowed: kWh, MWh</li></ul><i class="m">2</i></div>
+          <div class="tbl"><table><thead><tr><th>Date</th><th>Category</th><th class="n">Amount</th><th class="n">CO₂ (kg)</th><th>Note</th></tr></thead><tbody><tr><td>2026-03-31</td><td>Electricity</td><td class="n">2,100 kWh</td><td class="n">798</td><td>March bill</td></tr></tbody></table></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Success</b><code>201 { imported: 12 }</code>; the list reloads with the new rows. CO₂ is calculated by the server for every row. <span class="req">R13</span></div></li>
+        <li><i class="m">2</i><div><b>Nothing imported</b><code>400</code> with each bad row: its row number in the file and the same messages as the form. Fix the file and import again. <span class="req">R4 R13</span></div></li>
       </ol>
     </div>
   </section>

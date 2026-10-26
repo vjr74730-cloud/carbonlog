@@ -305,11 +305,47 @@ async function saveTarget(event) {
 }
 
 // ---------- start ----------
+// ---------- CSV import ----------
+// Sends the file text to POST /api/entries/import. The server validates every row with the
+// same rules as the form and imports all rows or none, so a bad file never half-imports.
+const MAX_IMPORT_BYTES = 512 * 1024;
+function showImportResult(ok, title, rows = []) {
+  const box = $('#import-msg');
+  box.replaceChildren(el('div', {}, title));
+  if (rows.length) {
+    const list = el('ul');
+    for (const r of rows) {
+      const msg = Object.values(r.fields || {}).join('; ');
+      list.append(el('li', {}, r.line ? `Row ${r.line}: ${msg}` : msg));
+    }
+    box.append(list);
+  }
+  box.className = ok ? 'import-msg' : 'import-msg error';
+  box.hidden = false;
+}
+async function importCsv(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = '';                                  // lets the user pick the same file again after fixing it
+  if (!file) return;
+  if (file.size > MAX_IMPORT_BYTES) return showImportResult(false, `"${file.name}" is too large (max. 512 KB).`);
+  try {
+    const res = await fetch('/api/entries/import', { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: await file.text() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return showImportResult(false, data.error || `Import failed (${res.status})`, data.rows || []);
+    showImportResult(true, `Imported ${data.imported} ${data.imported === 1 ? 'entry' : 'entries'} from "${file.name}".`);
+    loadEntries();
+  } catch (err) {
+    showImportResult(false, `Could not import: ${err.message}`);
+  }
+}
+
 async function init() {
   for (const tab of document.querySelectorAll('.tab')) tab.addEventListener('click', () => showView(tab.dataset.view));
   $('#range-form').addEventListener('submit', (e) => { e.preventDefault(); loadDashboard(); });
   $('#range-clear').addEventListener('click', () => { $('#range-from').value = ''; $('#range-to').value = ''; loadDashboard(); });
   $('#add-entry').addEventListener('click', () => openDialog(null));
+  $('#import-file').addEventListener('change', importCsv);
   $('#entry-cancel').addEventListener('click', () => $('#entry-dialog').close());
   $('#entry-form').addEventListener('submit', submitEntry);
   $('#f-category').addEventListener('change', (e) => fillUnits(e.target.value, null));

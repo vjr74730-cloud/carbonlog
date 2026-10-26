@@ -1,0 +1,7 @@
+category,amount,unit,entry_date,note
+electricity,2100,kWh,2026-01-31,Office electricity bill January
+natural_gas,1500,kWh,2026-01-31,Heating January
+car_travel,640,km,2026-01-20,Service van
+train_travel,420,km,2026-01-12,Trade fair Munich
+flight,1850,km,2026-01-08,Client visit
+purchased_goods,1800,EUR,2026-01-15,Packaging and supplies

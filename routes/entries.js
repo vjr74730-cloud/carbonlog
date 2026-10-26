@@ -12,6 +12,7 @@
 //     -> frontend reloads the list and dashboard
 const express = require('express');
 const { calculateCo2, validateEntryInput, isValidIsoDate, ValidationError } = require('../services/calculator');
+const { csvToEntries } = require('../services/csv-import');
 
 module.exports = function entriesRouter(db) {
   const router = express.Router();
@@ -89,6 +90,34 @@ module.exports = function entriesRouter(db) {
     if (fields) return sendInvalid(res, fields);
     const info = insertEntry.run(row);
     res.status(201).json(getEntry.get(info.lastInsertRowid));
+  });
+
+  // CSV import: all rows or nothing. Every row goes through the same prepareRow() as the
+  // form, so an import cannot store anything the form would reject. The body is the raw
+  // file text (Content-Type: text/csv), parsed here by a route-specific text parser.
+  const insertMany = db.transaction((rows) => {
+    for (const row of rows) insertEntry.run(row);
+  });
+  router.post('/import', express.text({ type: ['text/csv', 'text/plain', 'application/csv'], limit: '512kb' }), (req, res) => {
+    if (typeof req.body !== 'string') return res.status(400).json({ error: 'Send the file content as text/csv' });
+
+    const { rows, errors } = csvToEntries(req.body);
+    if (errors.length) return res.status(400).json({ error: errors[0].message, rows: errors.map((e) => ({ line: e.line, fields: { file: e.message } })) });
+
+    const valid = [], invalid = [];
+    for (const { line, body } of rows) {
+      const { row, fields } = prepareRow(body);
+      if (fields) invalid.push({ line, fields });
+      else valid.push(row);
+    }
+    if (invalid.length) {
+      return res.status(400).json({
+        error: `Nothing was imported: ${invalid.length} of ${rows.length} rows have errors`,
+        rows: invalid.slice(0, 50),
+      });
+    }
+    insertMany(valid);                       // one transaction: either every row is saved or none
+    res.status(201).json({ imported: valid.length });
   });
 
   // Editing recalculates CO2 with the CURRENT factor (the user changed the data on purpose).

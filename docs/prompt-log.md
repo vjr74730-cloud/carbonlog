@@ -123,6 +123,20 @@ What the finished code shows was decided along the way (documented in `README.md
 
 - **Decision:** the grading criteria are tool-neutral, but the course teaches Codex, so the team confirms with the lecturer. Whichever tool is used, the prompt history is kept for this log.
 
+### C4. CSV import (26 Oct 2026)
+
+> "Why theres no option to import and export csv file"
+
+- **What was found:** export already existed in the real app (Entries → Export CSV), but the **preview artifact had replaced the button with a note**, so it looked missing. Import really was missing.
+- **Decisions:**
+  - **All-or-nothing import:** one bad row imports nothing, and the response lists every bad row with its row number. *Rejected:* importing the valid rows and skipping the rest, because a half-imported file is hard to clean up.
+  - **Same validation as the form:** every row goes through `prepareRow()`, so an import can never store what the form would reject. *Rejected:* a separate, looser check for imports.
+  - **Parsing in its own module** (`services/csv-import.js`, no database), so it can be unit-tested. *Rejected:* an npm CSV package, because the course asks to review dependencies and a ~100-line parser is easy to explain.
+  - **German Excel support:** semicolons, `1.500,5`, `15.03.2026`, German column names.
+- **Iteration after a test:** the first browser test with a German file failed because the header said `Kategorie` and only English column names were recognised. **Fix:** German header names added, plus a unit test.
+- **Known limitation:** importing the same file twice creates duplicates.
+- **Evidence:** `tests/csv-import.test.js` (7 tests, pass); 4 route tests in `tests/api.test.js` (run with `npm install && npm test`).
+
 ---
 
 ## D. How to add your own prompts

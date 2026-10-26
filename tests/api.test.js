@@ -147,3 +147,50 @@ test('CSV export has a header, correct content type, and neutralises formulas', 
   assert.ok(r.text.startsWith('id,category,amount,unit,entry_date,co2_kg,note\n'));
   assert.ok(r.text.includes(`"'=HYPERLINK(""http://evil"")"`));
 });
+
+// ---------- CSV import ----------
+async function importCsv(text) {
+  const res = await fetch(base + '/api/entries/import', { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: text });
+  return { status: res.status, json: await res.json() };
+}
+const countEntries = async () => (await call('GET', '/api/entries')).json.length;
+
+test('CSV import: a valid file is imported and CO2 is calculated by the server', async () => {
+  const before = await countEntries();
+  const r = await importCsv('category,amount,unit,entry_date,note\nelectricity,100,kWh,2025-06-01,import A\ntrain_travel,420,km,2025-06-02,import B\n');
+  assert.equal(r.status, 201);
+  assert.equal(r.json.imported, 2);
+  assert.equal(await countEntries(), before + 2);
+  const list = (await call('GET', '/api/entries')).json;
+  assert.equal(list.find((e) => e.note === 'import A').co2_kg, 38);
+  assert.equal(list.find((e) => e.note === 'import B').co2_kg, 14.7);
+});
+
+test('CSV import is all-or-nothing: one bad row means nothing is saved, and the row is named', async () => {
+  const before = await countEntries();
+  const r = await importCsv('category,amount,unit,entry_date\nelectricity,100,kWh,2025-06-01\nelectricity,-5,kWh,2025-06-02\nelectricity,1,km,2025-06-03\n');
+  assert.equal(r.status, 400);
+  assert.match(r.json.error, /Nothing was imported: 2 of 3 rows/);
+  assert.deepEqual(r.json.rows.map((x) => x.line), [3, 4]);
+  assert.ok(r.json.rows[0].fields.amount);
+  assert.ok(r.json.rows[1].fields.unit);
+  assert.equal(await countEntries(), before);
+});
+
+test('CSV import: our own export can be imported again', async () => {
+  const exported = (await call('GET', '/api/export.csv')).text;
+  const rowsInExport = exported.trim().split('\n').length - 1;
+  const before = await countEntries();
+  const r = await importCsv(exported);
+  assert.equal(r.status, 201);
+  assert.equal(r.json.imported, rowsInExport);
+  assert.equal(await countEntries(), before + rowsInExport);
+});
+
+test('CSV import rejects a missing header column and a JSON body', async () => {
+  const r = await importCsv('category,amount\nelectricity,5\n');
+  assert.equal(r.status, 400);
+  assert.match(r.json.error, /Missing column/);
+  const asJson = await call('POST', '/api/entries/import', { csv: 'x' });
+  assert.equal(asJson.status, 400);
+});

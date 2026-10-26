@@ -66,7 +66,11 @@
       <div class="toolbar">
         <button type="button" id="add-entry" class="btn primary">Add entry</button>
         <a class="btn ghost" href="/api/export.csv" download>Export CSV</a>
+        <label class="btn ghost" for="import-file">Import CSV</label>
+        <input type="file" id="import-file" class="sr" accept=".csv,text/csv">
+        <a class="hint-link" href="carbonlog-template.csv" download>Download template</a>
       </div>
+      <div id="import-msg" class="import-msg" role="status" hidden></div>
       <div id="entries-state" class="state" role="status"></div>
       <div class="table-wrap">
         <table id="entries-table" hidden>

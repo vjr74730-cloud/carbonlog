@@ -47,6 +47,7 @@ These are the team's goals for the product (hypotheses, not measured results):
 4. The **Dashboard** shows the total, the largest source, a category chart and a monthly trend, for any date range.
 5. In **Settings**, set a **reduction target** for the year and keep the **emission factors** up to date, with source and year.
 6. **Export CSV** to answer the questionnaire or share with the bank.
+7. Already keep the numbers in a spreadsheet? **Import CSV** brings them in at once, checked row by row.
 
 ## 5. Requirements and acceptance criteria
 
@@ -66,6 +67,7 @@ Each requirement is testable. The last column shows the automated test that prov
 | R10 | Export | One click downloads all entries as CSV; cells starting with `=`, `+`, `-`, `@` are neutralised | `api.test.js` › CSV export |
 | R11 | Robust API | Malformed JSON and unknown IDs give clean 400 / 404 errors; SQL injection attempts are stored as plain text | `api.test.js` › malformed JSON and bad ids; SQL injection |
 | R12 | Clear system feedback | Loading, empty ("No entries yet…"), and "server not reachable" states are shown instead of a blank page | Shown in the demo (see wireframes W1b and W6) |
+| R13 | Import entries from a CSV file | A file with a header row (`category,amount,unit,entry_date,note`) imports all rows (HTTP 201). If any row is invalid, **nothing** is imported and each bad row is listed with its error. Our own export, semicolon files from German Excel (`1.500,5`, `15.03.2026`) and German column names are accepted | `csv-import.test.js` (7 tests); `api.test.js` › CSV import (4 tests) |
 
 ## 6. Scope decisions
 
@@ -77,7 +79,8 @@ Each requirement is testable. The last column shows the automated test that prov
 | Results labelled as **estimates** | **In** | Factors are approximate; the app must not look like a certified report. |
 | Login, multiple users, multiple sites | **Out** | Not needed to prove the core workflow; would add security work beyond the course scope. |
 | Full GHG-Protocol inventory (Scope 1/2/3 classification) | **Out** | Too complex for the target user; a later version could map categories to scopes. |
-| Automatic import of bills or bank data | **Out** | Requires external integrations; manual entry is fast enough for 5–8 bills a month. |
+| CSV import from a spreadsheet | **In** | Many small companies already keep their bills in Excel; all-or-nothing keeps the data clean. |
+| Automatic import of bills or bank data | **Out** | Requires external integrations; manual entry and CSV import are enough for 5–8 bills a month. |
 | Pricing tiers (Free, Pro, Enterprise) | **Concept only** | Shown on the website to explain the business model; not implemented in the app. |
 
 ## 7. Architecture in one picture
@@ -98,4 +101,5 @@ SQLite (db/schema.sql via better-sqlite3): emission_factors, entries, targets
 - **No authentication**; suitable for one small company on a trusted computer.
 - Target progress compares **year-to-date with the whole previous year**, so it looks better early in the year than it is.
 - `better-sqlite3` runs **synchronously** and briefly blocks Node's event loop; fine for one company, not for many concurrent users.
+- Importing the same CSV twice creates **duplicate entries**; there is no duplicate check yet.
 - Dashboard charts load Chart.js from a CDN; without internet the numbers still show, but the charts do not.

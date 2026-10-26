@@ -6,7 +6,7 @@ A multi-page website for **CarbonLog**, the carbon footprint logger for SMEs, wi
 
 | File | What it shows |
 |---|---|
-| `docs/business-case.md` | Users, problem, process, testable requirements R1–R12 with acceptance criteria and the test that proves each, scope decisions, risks |
+| `docs/business-case.md` | Users, problem, process, testable requirements R1–R13 with acceptance criteria and the test that proves each, scope decisions, risks |
 | `docs/wireframes.html` and `docs/wireframes/*.png` | Annotated wireframes of every CarbonLog screen and state (W0–W6), linked to the requirements and API calls |
 | `docs/prompt-log.md` | Selected prompts, why each iteration was needed, decisions, rejected alternatives, and defects found |
 | `git log` | Code history from the rubric review onwards; commit each AI-supported change separately |
@@ -83,6 +83,7 @@ Companies log activities (electricity, gas, car, flights, train, purchases); the
 | `GET /api/targets/:year` | Target and progress against the previous year |
 | `PUT /api/targets/:year` | Set the reduction target in percent |
 | `GET /api/export.csv` | Download all entries as CSV |
+| `POST /api/entries/import` | Import entries from a CSV file (body: the file text, `Content-Type: text/csv`). All rows or none: one invalid row imports nothing and the response lists each bad row with its errors |
 
 Errors always use `{ "error": "message" }` with status 400, 404 or 500. Entry validation errors also include a `fields` object that the form shows inline.
 
@@ -95,6 +96,7 @@ Errors always use `{ "error": "message" }` with status 400, 404 or 500. Entry va
 5. **CSV export neutralises spreadsheet formulas** in notes (cells starting with `=`, `+`, `-`, `@`).
 6. **The frontend builds the DOM with `textContent`**, never `innerHTML`.
 7. **The target baseline is the previous calendar year**, which avoids an extra column in the schema.
+8. **CSV import is all-or-nothing** and runs every row through the same validation as the form (`services/csv-import.js` only reads the file). It accepts our own export, comma or semicolon files, German number and date formats and German column names; CO₂ is always recalculated. Importing the same file twice creates duplicates.
 
 ### Known limitations
 
