@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarbonLog Wireframes</title>
+<style>
+  /* Annotated wireframes for CarbonLog. One committed light "paper" look; colours are tokens. */
+  :root {
+    color-scheme: light;
+    --paper: #f6f5f1; --sheet: #ffffff; --ink: #1f2328; --soft: #5b616b; --line: #2b2f36; --fill: #e6e6e3; --fill-2: #d4d4cf;
+    --note: #1d4ed8; --note-bg: #e8efff; --err: #b42318; --err-bg: #fdecea; --ok: #2a7f3e;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); padding-block: 40px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .doc { max-width: 1240px; margin: 0 auto; display: grid; gap: 56px; }
+  .intro h1 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); letter-spacing: -.02em; text-wrap: balance; }
+  .intro p { color: var(--soft); max-width: 70ch; margin-top: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; font-size: .88rem; color: var(--soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+
+  .wf { display: grid; gap: 16px; }
+  .wf > header h2 { font-size: 1.35rem; letter-spacing: -.01em; }
+  .wf > header h2 b { font: 600 .85rem/1 var(--mono); color: var(--note); background: var(--note-bg); padding: 4px 8px; border-radius: 6px; margin-right: 8px; vertical-align: 3px; }
+  .wf > header p { color: var(--soft); max-width: 80ch; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 24px; align-items: start; }
+  @media (max-width: 960px) { .row { grid-template-columns: 1fr; } }
+
+  /* browser frame */
+  .browser { background: var(--sheet); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+  .chrome { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 2px solid var(--line); background: var(--fill); font: 12px var(--mono); color: var(--soft); }
+  .chrome i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line); }
+  .chrome .url { flex: 1; margin-left: 8px; background: var(--sheet); border: 1.5px solid var(--line); border-radius: 6px; padding: 2px 10px; }
+  .page { padding: 0 0 18px; position: relative; }
+  .apphead { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
+  .apphead .brand { font-weight: 800; font-size: 1.1rem; }
+  .pill { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: .82rem; background: var(--sheet); }
+  .pill.on { background: var(--ink); color: var(--sheet); }
+  .tabs { display: flex; gap: 6px; margin-left: auto; }
+  .body { padding: 18px 20px 0; display: grid; gap: 14px; }
+  .h { font-weight: 800; font-size: 1.35rem; }
+  .muted { color: var(--soft); font-size: .88rem; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .field { display: grid; gap: 3px; font-size: .78rem; color: var(--soft); }
+  .input { border: 1.5px solid var(--line); border-radius: 6px; height: 32px; min-width: 120px; background: var(--sheet); padding: 0 8px; display: flex; align-items: center; font-size: .82rem; color: var(--ink); }
+  .input.bad { border-color: var(--err); background: var(--err-bg); }
+  .btn { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 1.5px solid var(--line); border-radius: 999px; font-size: .82rem; font-weight: 600; background: var(--sheet); }
+  .btn.primary { background: var(--ink); color: var(--sheet); }
+  .btn.danger { border-color: var(--err); color: var(--err); }
+  .btn.sm { height: 26px; padding: 0 10px; font-size: .74rem; }
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .card { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--sheet); min-width: 0; }
+  .card .k { font-size: .74rem; color: var(--soft); }
+  .card .v { font-weight: 800; font-size: 1.15rem; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ph { position: relative; height: 120px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--fill);
+        background-image: linear-gradient(to top right, transparent calc(50% - 1px), var(--fill-2) 50%, transparent calc(50% + 1px)), linear-gradient(to top left, transparent calc(50% - 1px), var(--fill-2) 50%, transparent calc(50% + 1px)); }
+  .ph span { position: absolute; left: 8px; bottom: 6px; font: 11px var(--mono); color: var(--soft); background: var(--fill); padding: 0 4px; }
+  .meter { height: 12px; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 62%; background: var(--fill-2); }
+  table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1.2px solid var(--fill-2); white-space: nowrap; }
+  th { font-weight: 700; border-bottom: 1.5px solid var(--line); }
+  td.n, th.n { text-align: right; }
+  .tbl { overflow-x: auto; border: 1.5px solid var(--line); border-radius: 10px; padding: 4px 6px; background: var(--sheet); }
+  .foot { margin: 6px 20px 0; padding-top: 10px; border-top: 1.5px dashed var(--fill-2); font-size: .75rem; color: var(--soft); }
+  .state { border: 1.5px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; color: var(--soft); font-size: .88rem; }
+  .banner { border: 1.5px solid var(--err); background: var(--err-bg); color: var(--err); border-radius: 8px; padding: 8px 12px; font-size: .82rem; }
+  .ok { color: var(--ok); font-size: .82rem; }
+  .err { color: var(--err); font-size: .74rem; }
+  .mini { display: grid; gap: 8px; }
+
+  /* modal over a dimmed page */
+  .dim { position: relative; }
+  .dim::before { content: ""; position: absolute; inset: 0; background: rgba(31, 35, 40, .35); z-index: 1; }
+  .modal { position: absolute; z-index: 2; left: 50%; top: 22px; transform: translateX(-50%); width: min(420px, 92%); background: var(--sheet); border: 2px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 8px; box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
+  .modal .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px; }
+  .modal .input { min-width: 0; width: 100%; }
+  .modal .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .confirm { position: absolute; z-index: 2; left: 50%; top: 60px; transform: translateX(-50%); width: min(440px, 92%); background: var(--sheet); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 12px; font-size: .86rem; box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
+
+  /* numbered callouts */
+  .m { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--note); color: #fff; font: 700 11px/1 var(--mono); flex: 0 0 auto; vertical-align: middle; }
+  .anchor { position: relative; }
+  .anchor > .m { position: absolute; top: -9px; right: -9px; z-index: 3; }
+  .notes { list-style: none; padding: 0; display: grid; gap: 10px; counter-reset: n; }
+  .notes li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; background: var(--sheet); border: 1.5px solid var(--fill-2); border-radius: 10px; padding: 10px 12px; font-size: .86rem; }
+  .notes li b { display: block; }
+  .notes code { font: .78rem var(--mono); background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+  .req { font: 600 .72rem var(--mono); color: var(--note); }
+
+  /* navigation map */
+  .map { background: var(--sheet); border: 2px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; }
+  .map svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="doc">
+
+  <section class="intro">
+    <h1>CarbonLog – annotated wireframes</h1>
+    <p>Low-fidelity screens of the CarbonLog app as it is implemented in <code>public/carbonlog.html</code>. Numbers mark controls and states; each note names the requirement from <code>docs/business-case.md</code> (R1–R12) and the API call behind it.</p>
+    <div class="legend"><span><i class="m">1</i> numbered callout</span><span><span class="req">R4</span> requirement it serves</span><span><span class="banner" style="padding:0 6px">red</span> error state</span></div>
+  </section>
+
+  <!-- W0 navigation -->
+  <section class="wf" id="w0">
+    <header><h2><b>W0</b>Navigation and flow</h2><p>One page with three tabs. Adding and editing happen in a dialog, so the user never loses the list. Every action calls the REST API and then refreshes what is on screen.</p></header>
+    <div class="map">
+      <svg viewBox="0 0 1180 400" role="img" aria-label="Navigation map: Website to CarbonLog, three tabs, dialog and confirm flows">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2b2f36"/></marker></defs>
+        <g font-family="system-ui, sans-serif" font-size="14" fill="#1f2328">
+          <rect x="20" y="160" width="150" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="95" y="185" text-anchor="middle" font-weight="700">Website</text><text x="95" y="204" text-anchor="middle" font-size="12" fill="#5b616b">"Open CarbonLog"</text>
+          <rect x="240" y="40" width="190" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="335" y="68" text-anchor="middle" font-weight="700">Dashboard (W1)</text><text x="335" y="88" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/summary, /targets</text>
+          <rect x="240" y="156" width="190" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="335" y="184" text-anchor="middle" font-weight="700">Entries (W2)</text><text x="335" y="204" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/entries</text>
+          <rect x="240" y="272" width="190" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="335" y="300" text-anchor="middle" font-weight="700">Settings (W5)</text><text x="335" y="320" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/factors, /targets</text>
+          <rect x="520" y="110" width="210" height="64" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="138" text-anchor="middle" font-weight="700">Add / Edit dialog (W3)</text><text x="625" y="158" text-anchor="middle" font-size="12" fill="#5b616b">POST or PUT /api/entries</text>
+          <rect x="520" y="200" width="210" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="225" text-anchor="middle" font-weight="700">Confirm delete (W4)</text><text x="625" y="243" text-anchor="middle" font-size="12" fill="#5b616b">DELETE /api/entries/:id</text>
+          <rect x="520" y="280" width="210" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="625" y="305" text-anchor="middle" font-weight="700">CSV download</text><text x="625" y="323" text-anchor="middle" font-size="12" fill="#5b616b">GET /api/export.csv</text>
+          <rect x="820" y="110" width="200" height="64" rx="10" fill="#e8efff" stroke="#1d4ed8" stroke-width="2"/><text x="920" y="138" text-anchor="middle" font-weight="700" fill="#1d4ed8">Validation errors</text><text x="920" y="158" text-anchor="middle" font-size="12" fill="#1d4ed8">400 { error, fields }</text>
+          <rect x="820" y="200" width="200" height="56" rx="10" fill="#fdecea" stroke="#b42318" stroke-width="2"/><text x="920" y="225" text-anchor="middle" font-weight="700" fill="#b42318">Error banner (W6)</text><text x="920" y="243" text-anchor="middle" font-size="12" fill="#b42318">404 / 500 / offline</text>
+          <rect x="820" y="20" width="200" height="56" rx="10" fill="#fff" stroke="#2b2f36" stroke-width="2"/><text x="920" y="45" text-anchor="middle" font-weight="700">List refreshes</text><text x="920" y="63" text-anchor="middle" font-size="12" fill="#5b616b">201 / 200 / 204</text>
+        </g>
+        <g stroke="#2b2f36" stroke-width="2" fill="none" marker-end="url(#ar)">
+          <path d="M170 188 C 205 188 205 72 238 72"/><path d="M170 188 L238 188"/><path d="M170 188 C 205 188 205 304 238 304"/>
+          <path d="M430 178 C 470 178 470 142 518 142"/><path d="M430 196 C 470 196 470 228 518 228"/><path d="M430 210 C 470 230 470 308 518 308"/>
+          <path d="M730 124 C 775 110 775 60 818 52"/><path d="M730 210 C 790 200 780 70 818 62"/>
+          <path d="M730 150 L818 150"/>
+          <path d="M335 106 L335 154" stroke-dasharray="5 5"/><path d="M335 222 L335 270" stroke-dasharray="5 5"/>
+        </g>
+        <g stroke="#b42318" stroke-width="2" fill="none" stroke-dasharray="6 5" marker-end="url(#ar)"><path d="M730 240 L818 232"/><path d="M730 160 C 780 175 780 215 818 222"/></g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="12" fill="#5b616b"><text x="345" y="134">tabs</text><text x="345" y="250">tabs</text>
+          <text x="742" y="80" text-anchor="end">success</text><text x="920" y="278" text-anchor="middle" fill="#b42318">server / network failure</text></g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- W1 dashboard -->
+  <section class="wf" id="w1">
+    <header><h2><b>W1</b>Dashboard</h2><p>The first thing the owner-manager sees: the total, the biggest source and the trend, for any date range.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page">
+          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span>
+            <div class="tabs anchor"><span class="pill on">Dashboard</span><span class="pill">Entries</span><span class="pill">Settings</span><i class="m">1</i></div></div>
+          <div class="body">
+            <div><div class="h">Dashboard</div><div class="muted">Know your footprint in minutes: log activities, see where your emissions come from.</div></div>
+            <div class="bar anchor" style="width:max-content;max-width:100%"><label class="field">From<span class="input">01.01.2026</span></label><label class="field">To<span class="input">31.03.2026</span></label><span class="btn">Apply</span><span class="btn">Clear</span><i class="m">2</i></div>
+            <div class="cards anchor"><div class="card"><div class="k">Total emissions</div><div class="v">1,284 kg CO₂</div></div><div class="card"><div class="k">Entries</div><div class="v">17</div></div><div class="card"><div class="k">Largest source</div><div class="v">Electricity</div></div><i class="m">3</i></div>
+            <div class="two anchor"><div class="card"><div class="k">By category</div><div class="ph"><span>doughnut chart</span></div></div><div class="card"><div class="k">Monthly trend</div><div class="ph"><span>bar chart</span></div></div><i class="m">4</i></div>
+            <div class="card anchor"><div class="k">Reduction target</div><div style="font-size:.82rem;margin:4px 0 8px">Target: reduce by 10% versus 2025 (2,100 kg). So far this year: 1,284 kg, which is 39% below the baseline.</div><div class="meter"><i></i></div><i class="m">5</i></div>
+          </div>
+          <div class="foot anchor">CarbonLog provides <b>estimates</b>, not certified emission reports. Emission factors are approximate…<i class="m">6</i></div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Tabs</b>Dashboard, Entries, Settings. The active tab is filled; one page, no reload. "← Website" returns to the marketing site.</div></li>
+        <li><i class="m">2</i><div><b>Date range</b>From/To plus Apply; Clear shows all time. Sends <code>GET /api/summary?from=&amp;to=</code>. <span class="req">R7</span></div></li>
+        <li><i class="m">3</i><div><b>Key figures</b>Total, number of entries, largest source. Numbers come from the server, never computed in the browser. <span class="req">R7</span></div></li>
+        <li><i class="m">4</i><div><b>Charts</b>Share by category and a monthly trend (Chart.js). If the charts cannot load, the numbers above still show. <span class="req">R7 R12</span></div></li>
+        <li><i class="m">5</i><div><b>Target progress</b>Compared with the previous calendar year; the bar turns orange when the year is above target. <code>GET /api/targets/:year</code> <span class="req">R8</span></div></li>
+        <li><i class="m">6</i><div><b>Estimate disclaimer</b>Always visible, so nobody mistakes the figures for a certified report. <span class="req">Scope</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W1b states -->
+  <section class="wf" id="w1b">
+    <header><h2><b>W1b</b>Dashboard states: loading, empty, charts unavailable</h2><p>The page never stays blank: each state tells the user what is happening and what to do next.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page"><div class="body">
+          <div class="state anchor">Loading…<i class="m">1</i></div>
+          <div class="state anchor">No entries in this period yet. Add your first activity on the Entries tab.<i class="m">2</i></div>
+          <div class="banner anchor">Charts could not be loaded (Chart.js CDN unreachable). Numbers are still shown above.<i class="m">3</i></div>
+          <div class="card anchor"><div class="k">Reduction target</div><div style="font-size:.82rem">No target set for this year. You can set one under Settings.</div><i class="m">4</i></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Loading</b>Shown while <code>/api/summary</code> is on its way. <span class="req">R12</span></div></li>
+        <li><i class="m">2</i><div><b>Empty</b>No entries in the chosen range; points the user to the next step. <span class="req">R12</span></div></li>
+        <li><i class="m">3</i><div><b>Charts unavailable</b>The chart library comes from a CDN; offline the app degrades instead of breaking. <span class="req">R12</span></div></li>
+        <li><i class="m">4</i><div><b>No target yet</b>Explains where to set one. If the previous year has no entries, it says progress cannot be calculated. <span class="req">R8</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W2 entries -->
+  <section class="wf" id="w2">
+    <header><h2><b>W2</b>Entries</h2><p>The list of everything logged, newest first, with edit and delete on each row.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page">
+          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><div class="tabs"><span class="pill">Dashboard</span><span class="pill on">Entries</span><span class="pill">Settings</span></div></div>
+          <div class="body">
+            <div class="h">Entries</div>
+            <div class="bar"><span class="btn primary anchor">Add entry<i class="m">1</i></span><span class="btn anchor">Export CSV<i class="m">2</i></span></div>
+            <div class="tbl anchor"><table>
+              <thead><tr><th>Date</th><th>Category</th><th class="n">Amount</th><th class="n">CO₂ (kg)</th><th>Note</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>2026-03-15</td><td>Electricity</td><td class="n">100 kWh</td><td class="n">38</td><td>Office, March bill</td><td><span class="btn sm">Edit</span> <span class="btn sm danger">Delete</span></td></tr>
+                <tr><td>2026-03-08</td><td>Train travel</td><td class="n">420 km</td><td class="n">14.7</td><td>Trade fair Munich</td><td><span class="btn sm">Edit</span> <span class="btn sm danger">Delete</span></td></tr>
+                <tr><td>2026-02-28</td><td>Natural gas</td><td class="n">1,200 kWh</td><td class="n">241.2</td><td>Heating</td><td><span class="btn sm">Edit</span> <span class="btn sm danger">Delete</span></td></tr>
+              </tbody></table><i class="m">3</i></div>
+            <div class="state anchor">No entries yet. Click "Add entry" to log your first activity.<i class="m">4</i></div>
+          </div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Add entry</b>Opens the dialog (W3). <span class="req">R1</span></div></li>
+        <li><i class="m">2</i><div><b>Export CSV</b>Downloads every entry: <code>GET /api/export.csv</code>. Formulas in notes are neutralised. <span class="req">R10</span></div></li>
+        <li><i class="m">3</i><div><b>Table</b>CO₂ is the value stored when the entry was saved; changing a factor later does not change it. Edit opens W3 pre-filled; Delete opens W4. <span class="req">R5 R6 R9</span></div></li>
+        <li><i class="m">4</i><div><b>Empty state</b>Shown instead of an empty table on first use. <span class="req">R12</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W3 dialog -->
+  <section class="wf" id="w3">
+    <header><h2><b>W3</b>Add / edit entry, with validation errors</h2><p>The same dialog adds and edits. The server checks every field and answers with messages that appear under the right field.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page dim" style="min-height:470px">
+          <div class="body" style="opacity:.6"><div class="h">Entries</div><div class="tbl"><table><tbody><tr><td>2026-03-15</td><td>Electricity</td><td>100 kWh</td><td>38</td></tr><tr><td>2026-03-08</td><td>Train travel</td><td>420 km</td><td>14.7</td></tr></tbody></table></div></div>
+          <div class="modal">
+            <div class="h" style="font-size:1.1rem">Add entry</div>
+            <label class="field anchor">Category<span class="input">Electricity ▾</span><i class="m">1</i></label>
+            <div class="grid2">
+              <label class="field anchor">Amount<span class="input bad">-50</span><span class="err">Amount must be a number greater than 0</span><i class="m">2</i></label>
+              <label class="field anchor">Unit<span class="input">kWh ▾ (kWh, MWh)</span><i class="m">3</i></label>
+            </div>
+            <label class="field anchor">Date<span class="input bad">2027-01-10</span><span class="err">Date must not be in the future</span><i class="m">4</i></label>
+            <label class="field">Note (optional)<span class="input">Office, March bill</span></label>
+            <div class="acts anchor"><span class="btn">Cancel</span><span class="btn primary">Save</span><i class="m">5</i></div>
+          </div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Category</b>Six categories; choosing one limits the unit list to that category's units. <span class="req">R1</span></div></li>
+        <li><i class="m">2</i><div><b>Amount</b>Must be a number &gt; 0 and ≤ 1,000,000,000. Errors come back as <code>400 { error, fields }</code> and appear here. <span class="req">R4</span></div></li>
+        <li><i class="m">3</i><div><b>Unit</b>Only the category's units: kWh/MWh for energy, km/miles for travel, EUR for goods. Converted on the server. <span class="req">R2 R3</span></div></li>
+        <li><i class="m">4</i><div><b>Date</b>A real calendar date, not in the future. <span class="req">R4</span></div></li>
+        <li><i class="m">5</i><div><b>Save</b>New: <code>POST /api/entries</code> → 201. Edit: <code>PUT /api/entries/:id</code> recalculates CO₂. On success the dialog closes and the list refreshes. <span class="req">R1 R5</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W4 confirm -->
+  <section class="wf" id="w4">
+    <header><h2><b>W4</b>Confirm delete</h2><p>Deleting cannot be undone, so the user confirms first and sees exactly which entry goes.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page dim" style="min-height:260px">
+          <div class="body" style="opacity:.6"><div class="h">Entries</div><div class="tbl"><table><tbody><tr><td>2026-03-15</td><td>Electricity</td><td>100 kWh</td><td>38</td></tr></tbody></table></div></div>
+          <div class="confirm anchor"><div>Delete the Electricity entry from 2026-03-15? This cannot be undone.</div><div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn">Cancel</span><span class="btn primary">OK</span></div><i class="m">1</i></div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Browser confirm</b>OK sends <code>DELETE /api/entries/:id</code> → 204, then the list and the dashboard refresh. Cancel changes nothing. <span class="req">R6</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W5 settings -->
+  <section class="wf" id="w5">
+    <header><h2><b>W5</b>Settings: reduction target and emission factors</h2><p>Where the company sets its yearly goal and keeps the emission factors current, with a source and a year for each.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page">
+          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><div class="tabs"><span class="pill">Dashboard</span><span class="pill">Entries</span><span class="pill on">Settings</span></div></div>
+          <div class="body">
+            <div class="h">Settings</div>
+            <div class="card anchor mini"><div class="k">Reduction target</div><div class="bar"><label class="field">Year<span class="input">2026</span></label><label class="field">Reduce by (%)<span class="input">10</span></label><span class="btn primary">Save target</span></div><div class="muted">Progress compares this year with the previous year (the baseline).</div><div class="ok">Target for 2026 saved.</div><i class="m">1</i></div>
+            <div class="card anchor mini"><div class="k">Emission factors</div><div class="muted">Values are approximate. Verify them against an official source before real use. Changing a factor does not alter entries already saved.</div>
+              <div class="tbl"><table><thead><tr><th>Category</th><th>Unit</th><th>kg CO₂ per unit</th><th>Source</th><th>Year</th><th></th></tr></thead><tbody>
+                <tr><td>Electricity</td><td>kWh</td><td><span class="input" style="height:24px;min-width:70px">0.38</span></td><td><span class="input" style="height:24px">Approx. German grid mix…</span></td><td><span class="input" style="height:24px;min-width:60px">2023</span></td><td><span class="btn sm">Save</span></td></tr>
+                <tr><td>Natural gas</td><td>kWh</td><td>0.201</td><td>Approx. combustion factor…</td><td>2023</td><td><span class="btn sm">Save</span></td></tr>
+                <tr><td>Car travel</td><td>km</td><td>0.17</td><td>Approx. average car…</td><td>2023</td><td><span class="btn sm">Save</span></td></tr>
+              </tbody></table></div>
+              <div class="ok">Electricity saved. Existing entries keep their original CO₂ values.</div><i class="m">2</i></div>
+          </div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Target</b>Year 1990–2100 and 0–100 %. <code>PUT /api/targets/:year</code>; confirmation appears below the form. <span class="req">R8</span></div></li>
+        <li><i class="m">2</i><div><b>Factors</b>Value, source and year are editable per row. <code>PUT /api/factors/:id</code>. The message makes clear that history is not rewritten. <span class="req">R9</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W6 offline -->
+  <section class="wf" id="w6">
+    <header><h2><b>W6</b>Server not reachable</h2><p>If the Node.js server is not running, the user gets a clear message with the fix instead of a frozen page.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
+        <div class="page">
+          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><div class="tabs"><span class="pill on">Dashboard</span><span class="pill">Entries</span><span class="pill">Settings</span></div></div>
+          <div class="body">
+            <div class="banner anchor">Could not reach the CarbonLog server (Failed to fetch). Start it with "npm start" and open http://localhost:3000.<i class="m">1</i></div>
+            <div class="h">Dashboard</div><div class="state">–</div>
+          </div>
+        </div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Global error banner</b>Used for network failures and server errors (404, 500). The <code>api()</code> helper turns every non-OK response into a readable message. <span class="req">R11 R12</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

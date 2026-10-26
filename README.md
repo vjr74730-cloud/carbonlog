@@ -2,6 +2,15 @@
 
 A multi-page website for **CarbonLog**, the carbon footprint logger for SMEs, with the app built in. On the home page, a dust veil reads *A concept of carbon emission – scroll to clear the dust*. Scrolling clears it into an **Earthrise**: an astronaut on the Moon watches a blue Earth rise, while a HUD counts up the warming (+1.44 °C today, then an illustrated runaway). The Earth overheats into a sun and bursts with a Big Bang flash and boom, and the **Carbon Pulse presents CarbonLog** logo appears from the blast. Time rewinds: the pieces fall back in and form a galaxy, and the camera zooms through the Milky Way to the Earth today, wrapped in a glowing CO₂ atmosphere with heat and Alpine-glacier warnings (with sources). It zooms into Germany and dives through hot haze into a heatwave afternoon (rising thermometer, shimmering air, a burning sunset). After nightfall a green morning begins and the camera walks forward into a hand-painted solarpunk valley (solar cottages, wind turbines, a solar tram, farms with robots, a village square, a sunset overlook) with the snow-capped Alps on the horizon (their snow retreats during the heatwave) while chapter cards explain the product. The valley is rendered at native screen resolution (Retina, capped near 4K) and passed through a comic-book post-process inspired by animated films such as Spider-Verse: ink outlines, halftone dots and an RGB offset that grows when you scroll fast. The interface uses a liquid-glass theme (frosted, light-bending panels with a bright rim). Click sounds, a Big Bang boom when the logo appears, a soft fire crackle under the hot globe, footsteps and a meadow ambience are synthesized in the browser; the speaker button in the navbar turns them off. **Start logging** opens CarbonLog full screen with a circular reveal, with no page reload. CarbonLog gives SMEs an **estimate** of their CO₂ emissions; it is not a certified report.
 
+## Course evidence (`docs/`)
+
+| File | What it shows |
+|---|---|
+| `docs/business-case.md` | Users, problem, process, testable requirements R1–R12 with acceptance criteria and the test that proves each, scope decisions, risks |
+| `docs/wireframes.html` and `docs/wireframes/*.png` | Annotated wireframes of every CarbonLog screen and state (W0–W6), linked to the requirements and API calls |
+| `docs/prompt-log.md` | Selected prompts, why each iteration was needed, decisions, rejected alternatives, and defects found |
+| `git log` | Code history from the rubric review onwards; commit each AI-supported change separately |
+
 ## Run
 
 Requires Node.js 18 or newer.
