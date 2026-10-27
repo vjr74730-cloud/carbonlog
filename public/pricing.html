@@ -116,7 +116,7 @@
             <li>Edit emission factors with source and year</li>
             <li>Email support within 2 working days</li>
           </ul>
-          <a class="btn primary" href="contact.html#pro">Choose Pro</a>
+          <a class="btn primary" id="choose-pro" href="checkout.html?cycle=monthly">Choose Pro</a>
         </article>
 
         <article class="plan rv">
@@ -170,7 +170,7 @@
         <details class="rv"><summary>Who owns my data?</summary><p>You do. You can edit or delete every entry, and Pro and Enterprise let you export everything as CSV.</p></details>
         <details class="rv"><summary>What does “yearly” billing save?</summary><p>Pro costs €120 a year instead of €144 when paid monthly, which is two months free.</p></details>
       </div>
-      <p class="fine note">CarbonLog is a student project at ESB Business School, Reutlingen University. These prices show the planned business model; no payments are taken on this site.</p>
+      <p class="fine note">CarbonLog is a student project at ESB Business School, Reutlingen University. These prices show the planned business model; the checkout runs in test mode and no payments are taken.</p>
     </section>
   </main>
 
@@ -196,6 +196,7 @@
         price.textContent = yearly ? '€10' : '€12';
         per.textContent = 'per month';
         note.textContent = yearly ? '€120 billed once a year' : 'Billed monthly · cancel any time';
+        document.getElementById('choose-pro').href = `checkout.html?cycle=${yearly ? 'yearly' : 'monthly'}`;
       }
       m.addEventListener('click', () => set(false));
       y.addEventListener('click', () => set(true));

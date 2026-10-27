@@ -46,6 +46,7 @@ CarbonLog's charts load Chart.js from a CDN, so the first run needs an internet 
 | `/calculator.html` | **Quick Check**: instant monthly estimate with the app's factors, nothing saved |
 | `/learn.html` | **Learn**: scopes 1–3, how it is calculated, where to find data, quick wins, glossary |
 | `/pricing.html` | **Pricing**: Free (individuals), Pro (small shops), Enterprise (large organizations) |
+| `/checkout.html` | **Checkout for Pro** (from Pricing → Choose Pro): monthly/yearly, company and billing details, VAT by country and VAT ID (reverse charge), promo code, card / SEPA / PayPal / wallet / invoice. **Test mode:** validates in the browser only, sends and stores nothing. Connect a payment provider at the places marked `INTEGRATION` in the file |
 | `/contact.html` | **Contact Us**: the three team email addresses (Vignesh Sabarinathan, Suyash Chadha, Venkatesh Dalbhanjan) with copy buttons, and a form that prepares one email to all three |
 | `/carbonlog.html` | **Open CarbonLog**: the app as a full page |
 | `/nova.html` | The earlier Carbon Pulse 3D scroll demo |

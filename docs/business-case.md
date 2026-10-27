@@ -82,6 +82,7 @@ Each requirement is testable. The last column shows the automated test that prov
 | CSV import from a spreadsheet | **In** | Many small companies already keep their bills in Excel; all-or-nothing keeps the data clean. |
 | Automatic import of bills or bank data | **Out** | Requires external integrations; manual entry and CSV import are enough for 5–8 bills a month. |
 | Pricing tiers (Free, Pro, Enterprise) | **Concept only** | Shown on the website to explain the business model; not implemented in the app. |
+| Checkout for Pro | **UI in test mode** | Shows the full purchase flow (billing cycle, VAT, payment methods). Real payments need a payment provider and are out of scope; no card data is sent or stored. |
 
 ## 7. Architecture in one picture
 
