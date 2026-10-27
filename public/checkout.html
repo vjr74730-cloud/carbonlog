@@ -2,8 +2,8 @@
 <!--
   CarbonLog – checkout for the Pro plan (opened from pricing.html → "Choose Pro").
 
-  TEST MODE: this page only validates input in the browser and shows a confirmation.
-  It sends NOTHING to any server and stores nothing. To take real payments, connect a
+  DEMO CHECKOUT: this page only validates input in the browser, then opens payment-success.html.
+  It sends NOTHING to any server and stores no payment data. To take real payments, connect a
   payment provider at the places marked "INTEGRATION" below. Never send raw card numbers
   or CVCs to your own Node.js server: use the provider's hosted fields (for example the
   Stripe Payment Element), so card data goes straight to the provider (PCI DSS).
@@ -23,8 +23,6 @@
   <link rel="stylesheet" href="site.css">
   <style>
     .page { padding-top: calc(112px + env(safe-area-inset-top, 0px)); }
-    .testbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 16px; border-radius: 16px; border: 1px dashed rgba(180, 83, 9, .55); background: rgba(255, 237, 196, .7); color: #7a3a06; font-size: .92rem; margin-bottom: 26px; }
-    .testbar b { font: 500 .74rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; background: #b45309; color: #fff; padding: 6px 9px; border-radius: 8px; }
     .crumbs { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font: 500 .78rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin-bottom: 14px; }
     .crumbs a { color: var(--soft); }
     .head h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); }
@@ -116,16 +114,6 @@
     .trust svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--accent); }
     .form-err { color: var(--danger); font-size: .9rem; min-height: 1.2em; }
 
-    /* success */
-    .done { text-align: center; padding: 48px 28px; border-radius: 28px; max-width: 640px; margin: 30px auto 90px; display: grid; gap: 14px; justify-items: center; }
-    .done .tick { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 16px 40px rgba(42, 127, 62, .35); }
-    .done .tick svg { width: 38px; height: 38px; }
-    .done h1 { font-size: clamp(2rem, 4.5vw, 3rem); }
-    .done p { color: var(--muted); max-width: 48ch; }
-    .receipt { width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; background: rgba(255, 255, 255, .7); display: grid; gap: 8px; font-variant-numeric: tabular-nums; }
-    .receipt div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
-    .receipt div b { color: var(--ink); font-weight: 600; text-align: right; }
-    .done .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
     .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
@@ -150,7 +138,6 @@
 
   <main class="page">
     <div class="wrap" id="checkout">
-      <div class="testbar" role="note"><b>Test mode</b><span>No payment is taken and nothing is sent or stored. Try card number <code>4242 4242 4242 4242</code> with any future date and CVC.</span></div>
       <div class="head">
         <nav class="crumbs" aria-label="Breadcrumb"><a href="pricing.html">Pricing</a><span aria-hidden="true">›</span><span>Checkout</span></nav>
         <h1>Upgrade to Pro</h1>
@@ -259,16 +246,6 @@
       </form>
     </div>
 
-    <!-- success -->
-    <section class="wrap" id="done" hidden>
-      <div class="done panel" role="status" aria-live="polite">
-        <span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <h1>Welcome to Pro</h1>
-        <p id="done-text">Test payment complete. In the real integration a receipt is emailed and Pro is unlocked for your team.</p>
-        <div class="receipt" id="receipt"></div>
-        <div class="row"><a class="btn primary" href="carbonlog.html">Open CarbonLog</a><a class="btn" href="pricing.html">Back to pricing</a></div>
-      </div>
-    </section>
   </main>
 
   <footer class="site-foot">
@@ -277,7 +254,7 @@
       <nav class="foot-links" aria-label="Footer">
         <a href="calculator.html">Quick Check</a><a href="learn.html">Learn</a><a href="pricing.html">Pricing</a><a href="contact.html">Contact Us</a><a href="carbonlog.html">Open CarbonLog</a>
       </nav>
-      <p class="fine">A student project at ESB Business School, Reutlingen University. This checkout runs in test mode: no payments are taken.</p>
+      <p class="fine">A student project at ESB Business School, Reutlingen University. Demo checkout: no real payments are taken.</p>
     </div>
   </footer>
 
@@ -484,14 +461,16 @@
 
       const t = totals(), id = 'CP-' + Date.now().toString(36).toUpperCase().slice(-6);
       const methodText = { card: `${cardBrand(digits($('#cc-number').value)).name} ending ${digits($('#cc-number').value).slice(-4)}`, sepa: `SEPA ending ${$('#iban').value.replace(/\s/g, '').slice(-4)}`, paypal: 'PayPal', wallet: 'Apple Pay / Google Pay', invoice: 'Invoice, due in 14 days' }[state.method];
-      const rows = [['Order', id], ['Plan', `CarbonLog Pro, ${t.plan.name.toLowerCase()}`], ['Company', $('#company').value.trim()], ['Payment', methodText], ['Paid today', eur.format(t.total)], ['Next payment', `${eur.format(t.renew)} per ${t.plan.per}`]];
-      if (state.method === 'invoice') rows[4][0] = 'Invoice amount';
-      const rc = $('#receipt'); rc.replaceChildren();
-      for (const [k, val] of rows) { const d = document.createElement('div'); const s = document.createElement('span'); s.textContent = k; const b = document.createElement('b'); b.textContent = val; d.append(s, b); rc.append(d); }
-      $('#done-text').textContent = `Test order complete. In the real integration a receipt goes to ${$('#email').value.trim()} and Pro is unlocked for your team.`;
-      $('#checkout').hidden = true; $('#done').hidden = false;
-      scrollTo({ top: 0, behavior: 'smooth' });
+      const order = {
+        id, at: new Date().toISOString(), email: $('#email').value.trim(), company: $('#company').value.trim(),
+        plan: `CarbonLog Pro, ${t.plan.name.toLowerCase()}`, method: state.method, methodText,
+        paid: eur.format(t.total), next: `${eur.format(t.renew)} per ${t.plan.per}`,
+      };
+      // Hand the receipt to the success page. Only display data: never card numbers or CVCs.
+      try { sessionStorage.setItem('carbonpulse-order', JSON.stringify(order)); } catch (err) { /* storage blocked: the page falls back to the URL */ }
       if (window.CLSound) CLSound.success();
+      const q = new URLSearchParams({ order: id, method: state.method, paid: order.paid });
+      setTimeout(() => { location.href = `payment-success.html?${q}`; }, 250);
     });
 
     selectMethod('card');

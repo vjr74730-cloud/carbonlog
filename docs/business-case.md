@@ -68,6 +68,7 @@ Each requirement is testable. The last column shows the automated test that prov
 | R11 | Robust API | Malformed JSON and unknown IDs give clean 400 / 404 errors; SQL injection attempts are stored as plain text | `api.test.js` › malformed JSON and bad ids; SQL injection |
 | R12 | Clear system feedback | Loading, empty ("No entries yet…"), and "server not reachable" states are shown instead of a blank page | Shown in the demo (see wireframes W1b and W6) |
 | R13 | Import entries from a CSV file | A file with a header row (`category,amount,unit,entry_date,note`) imports all rows (HTTP 201). If any row is invalid, **nothing** is imported and each bad row is listed with its error. Our own export, semicolon files from German Excel (`1.500,5`, `15.03.2026`) and German column names are accepted | `csv-import.test.js` (7 tests); `api.test.js` › CSV import (4 tests) |
+| R14 | Live updates across devices | A change made in one browser, device or server instance appears in every other open CarbonLog within about 5 seconds, without reloading; a "Live" indicator shows the connection, and open forms are never overwritten | `live-revision.test.js`; `api.test.js` › GET /api/changes; shown in the demo with two windows |
 
 ## 6. Scope decisions
 
@@ -82,7 +83,7 @@ Each requirement is testable. The last column shows the automated test that prov
 | CSV import from a spreadsheet | **In** | Many small companies already keep their bills in Excel; all-or-nothing keeps the data clean. |
 | Automatic import of bills or bank data | **Out** | Requires external integrations; manual entry and CSV import are enough for 5–8 bills a month. |
 | Pricing tiers (Free, Pro, Enterprise) | **Concept only** | Shown on the website to explain the business model; not implemented in the app. |
-| Checkout for Pro | **UI in test mode** | Shows the full purchase flow (billing cycle, VAT, payment methods). Real payments need a payment provider and are out of scope; no card data is sent or stored. |
+| Checkout for Pro | **Demo UI** | Shows the full purchase flow (billing cycle, VAT, payment methods). Real payments need a payment provider and are out of scope; no card data is sent or stored. |
 
 ## 7. Architecture in one picture
 

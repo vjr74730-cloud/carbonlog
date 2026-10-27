@@ -46,7 +46,8 @@ CarbonLog's charts load Chart.js from a CDN, so the first run needs an internet 
 | `/calculator.html` | **Quick Check**: instant monthly estimate with the app's factors, nothing saved |
 | `/learn.html` | **Learn**: scopes 1–3, how it is calculated, where to find data, quick wins, glossary |
 | `/pricing.html` | **Pricing**: Free (individuals), Pro (small shops), Enterprise (large organizations) |
-| `/checkout.html` | **Checkout for Pro** (from Pricing → Choose Pro): monthly/yearly, company and billing details, VAT by country and VAT ID (reverse charge), promo code, card / SEPA / PayPal / wallet / invoice. **Test mode:** validates in the browser only, sends and stores nothing. Connect a payment provider at the places marked `INTEGRATION` in the file |
+| `/checkout.html` | **Checkout for Pro** (from Pricing → Choose Pro): monthly/yearly, company and billing details, VAT by country and VAT ID (reverse charge), promo code, card / SEPA / PayPal / wallet / invoice. **Demo checkout:** validates in the browser only, sends and stores no payment data, then opens the success page. Connect a payment provider at the places marked `INTEGRATION` in the file |
+| `/payment-success.html` | Shown after paying with any method: order number, plan, company, payment method, amount and next steps |
 | `/contact.html` | **Contact Us**: the three team email addresses (Vignesh Sabarinathan, Suyash Chadha, Venkatesh Dalbhanjan) with copy buttons, and a form that prepares one email to all three |
 | `/carbonlog.html` | **Open CarbonLog**: the app as a full page |
 | `/nova.html` | The earlier Carbon Pulse 3D scroll demo |
@@ -84,6 +85,7 @@ Companies log activities (electricity, gas, car, flights, train, purchases); the
 | `GET /api/targets/:year` | Target and progress against the previous year |
 | `PUT /api/targets/:year` | Set the reduction target in percent |
 | `GET /api/export.csv` | Download all entries as CSV |
+| `GET /api/changes` | Live updates: `{ revision }`, a number that database triggers raise on every write. The browser's background worker asks every 5 seconds and reloads the view when it changes |
 | `POST /api/entries/import` | Import entries from a CSV file (body: the file text, `Content-Type: text/csv`). All rows or none: one invalid row imports nothing and the response lists each bad row with its errors |
 
 Errors always use `{ "error": "message" }` with status 400, 404 or 500. Entry validation errors also include a `fields` object that the form shows inline.
@@ -97,6 +99,7 @@ Errors always use `{ "error": "message" }` with status 400, 404 or 500. Entry va
 5. **CSV export neutralises spreadsheet formulas** in notes (cells starting with `=`, `+`, `-`, `@`).
 6. **The frontend builds the DOM with `textContent`**, never `innerHTML`.
 7. **The target baseline is the previous calendar year**, which avoids an extra column in the schema.
+9. **Live updates without extra servers or packages.** SQLite triggers count every change in `app_meta.revision`; a Web Worker (`public/live-worker.js`) polls `GET /api/changes` every 5 seconds and the page reloads quietly only when the number changed (never while a form is open). Because the number lives in the database, updates reach every tab, device and server instance that uses the same database file (WAL mode allows several instances). Polling stops while the tab is hidden. *Rejected:* WebSockets (more moving parts, and they only reach clients of the same server instance).
 8. **CSV import is all-or-nothing** and runs every row through the same validation as the form (`services/csv-import.js` only reads the file). It accepts our own export, comma or semicolon files, German number and date formats and German column names; CO₂ is always recalculated. Importing the same file twice creates duplicates.
 
 ### Known limitations

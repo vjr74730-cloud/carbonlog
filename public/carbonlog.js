@@ -4,7 +4,7 @@
 
 const $ = (sel) => document.querySelector(sel);
 
-const state = { factors: [], charts: {} };
+const state = { factors: [], charts: {}, view: 'dashboard', pendingRefresh: false };
 
 // ---------- helpers ----------
 // Builds DOM nodes with textContent only, so user-entered notes can never inject HTML.
@@ -50,6 +50,7 @@ function showGlobalError(message) {
 
 // ---------- navigation ----------
 function showView(name) {
+  state.view = name;
   for (const v of document.querySelectorAll('.view')) v.hidden = v.id !== `view-${name}`;
   for (const t of document.querySelectorAll('.tab')) {
     if (t.dataset.view === name) t.setAttribute('aria-current', 'page');
@@ -71,17 +72,17 @@ function currentRange() {
   return q.toString() ? `?${q}` : '';
 }
 
-async function loadDashboard() {
+async function loadDashboard(quiet = false) {
   const stateBox = $('#dash-state');
   const content = $('#dash-content');
-  stateBox.textContent = 'Loading…';
-  content.hidden = true;
+  if (!quiet) { stateBox.textContent = 'Loading…'; content.hidden = true; }
   try {
     const [summary, target] = await Promise.all([
       api(`/api/summary${currentRange()}`),
       api(`/api/targets/${new Date().getFullYear()}`),
     ]);
     if (summary.entry_count === 0) {
+      content.hidden = true;
       stateBox.textContent = 'No entries in this period yet. Add your first activity on the Entries tab.';
       return;
     }
@@ -149,16 +150,16 @@ function drawTarget(t) {
 }
 
 // ---------- entries ----------
-async function loadEntries() {
+async function loadEntries(quiet = false) {
   const stateBox = $('#entries-state');
   const table = $('#entries-table');
-  stateBox.textContent = 'Loading…';
-  table.hidden = true;
+  if (!quiet) { stateBox.textContent = 'Loading…'; table.hidden = true; }
   try {
     const rows = await api('/api/entries');
     const body = table.querySelector('tbody');
     body.replaceChildren();
     if (rows.length === 0) {
+      table.hidden = true;
       stateBox.textContent = 'No entries yet. Click "Add entry" to log your first activity.';
       return;
     }
@@ -340,6 +341,70 @@ async function importCsv(event) {
   }
 }
 
+// ---------- live updates ----------
+// A background worker (live-worker.js) asks GET /api/changes every 5 seconds. When the
+// database revision changes (a write from this tab, another tab, another device or another
+// server instance), the visible view reloads quietly, without a "Loading…" flash.
+const LIVE_MS = 5000;
+let liveWorker = null, liveTimer = null, demoRevision = null;
+
+function setLive(status, text) {
+  const pill = $('#live');
+  if (!pill) return;
+  pill.dataset.status = status;
+  pill.querySelector('span').textContent = text;
+}
+
+async function refreshVisible() {
+  if ($('#entry-dialog').open) { state.pendingRefresh = true; return; }   // never disturb a form being filled in
+  state.pendingRefresh = false;
+  if (state.view === 'dashboard') return loadDashboard(true);
+  if (state.view === 'entries') return loadEntries(true);
+  if (state.view === 'settings') {
+    if (document.activeElement && $('#view-settings').contains(document.activeElement) && document.activeElement.matches('input')) { state.pendingRefresh = true; return; }
+    state.factors = await api('/api/factors');
+    renderFactors(); loadTargetForm();
+  }
+}
+
+function onLiveMessage(msg) {
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (msg.type === 'changed') { refreshVisible(); setLive('live', `Live · updated ${time}`); }
+  else if (msg.type === 'ok') { if ($('#live').dataset.status !== 'live' || !$('#live').textContent.includes('updated')) setLive('live', 'Live'); }
+  else if (msg.type === 'offline') setLive('offline', 'Offline · retrying');
+}
+
+// Fallback without Web Workers (or in the in-page demo): the same check on the main thread.
+async function mainThreadCheck() {
+  try {
+    const { revision } = await api('/api/changes');
+    if (demoRevision !== null && revision !== demoRevision) onLiveMessage({ type: 'changed', revision });
+    else onLiveMessage({ type: 'ok', revision });
+    demoRevision = revision;
+  } catch (err) { onLiveMessage({ type: 'offline', error: err.message }); }
+}
+
+function startLive() {
+  if (window.Worker && !window.CL_DEMO) {
+    try {
+      liveWorker = new Worker('live-worker.js');
+      liveWorker.onmessage = (e) => onLiveMessage(e.data);
+      liveWorker.onerror = () => { liveWorker = null; startMainThreadLive(); };
+      liveWorker.postMessage({ type: 'start', intervalMs: LIVE_MS });
+      return;
+    } catch (err) { liveWorker = null; }
+  }
+  startMainThreadLive();
+}
+function startMainThreadLive() { clearInterval(liveTimer); mainThreadCheck(); liveTimer = setInterval(mainThreadCheck, LIVE_MS); }
+
+// Save requests while the tab is in the background; check at once when it comes back.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (liveWorker) liveWorker.postMessage({ type: 'stop' }); else clearInterval(liveTimer); }
+  else if (liveWorker) liveWorker.postMessage({ type: 'start', intervalMs: LIVE_MS });
+  else startMainThreadLive();
+});
+
 async function init() {
   for (const tab of document.querySelectorAll('.tab')) tab.addEventListener('click', () => showView(tab.dataset.view));
   $('#range-form').addEventListener('submit', (e) => { e.preventDefault(); loadDashboard(); });
@@ -347,6 +412,7 @@ async function init() {
   $('#add-entry').addEventListener('click', () => openDialog(null));
   $('#import-file').addEventListener('change', importCsv);
   $('#entry-cancel').addEventListener('click', () => $('#entry-dialog').close());
+  $('#entry-dialog').addEventListener('close', () => { if (state.pendingRefresh) refreshVisible(); });
   $('#entry-form').addEventListener('submit', submitEntry);
   $('#f-category').addEventListener('change', (e) => fillUnits(e.target.value, null));
   $('#target-form').addEventListener('submit', saveTarget);
@@ -357,6 +423,7 @@ async function init() {
     showGlobalError(`Could not reach the CarbonLog server (${err.message}). Start it with "npm start" and open http://localhost:3000.`);
   }
   showView('dashboard');
+  startLive();
 }
 
 // Inside the website, Escape closes the overlay (but not while the entry dialog is open).

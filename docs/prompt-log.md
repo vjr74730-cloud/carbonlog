@@ -137,6 +137,19 @@ What the finished code shows was decided along the way (documented in `README.md
 - **Known limitation:** importing the same file twice creates duplicates.
 - **Evidence:** `tests/csv-import.test.js` (7 tests, pass); 4 route tests in `tests/api.test.js` (run with `npm install && npm test`).
 
+### C5. Live updates and the success page (27 Oct 2026)
+
+> "Create a background worker such that the entries get live updates every 5 seconds across multiple instances . Remove the test mode box . After I enter my details and press the pay button I want the page to lead to new page saying the payment is successful for any payment option."
+
+- **Interpretation:** "multiple instances" = several tabs, devices and server instances. The only thing they all share is the **database**, so the change signal lives there.
+- **Decisions:**
+  - **SQLite triggers** raise a revision number on every write, so no route can forget to signal a change.
+  - **A Web Worker** polls `GET /api/changes` every 5 seconds, off the page's main thread, and the page reloads only when the number changed.
+  - **Quiet reloads** (no "Loading…" flash), **never while the entry dialog is open**, and **no polling while the tab is hidden**.
+  - *Rejected:* WebSockets or Server-Sent Events (only reach clients of the same server instance unless a message broker is added) and reloading every 5 s unconditionally (wasteful, and it would interrupt users).
+- **Tests:** trigger test with Node's built-in SQLite (runs without `npm install`); API test for `/api/changes`; two separate browser windows in a test harness: an entry added in window A appeared in window B after about 3 s, and a delete updated B's dashboard.
+- **Checkout:** test-mode box removed; every payment method now opens `payment-success.html` with the order details. No card data is passed on: only the last 4 digits for the receipt.
+
 ---
 
 ## D. How to add your own prompts

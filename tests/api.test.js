@@ -194,3 +194,18 @@ test('CSV import rejects a missing header column and a JSON body', async () => {
   const asJson = await call('POST', '/api/entries/import', { csv: 'x' });
   assert.equal(asJson.status, 400);
 });
+
+// ---------- live updates ----------
+test('GET /api/changes: the revision rises on every write and is never cached', async () => {
+  const r0 = await call('GET', '/api/changes');
+  assert.equal(r0.status, 200);
+  assert.equal(r0.headers.get('cache-control'), 'no-store');
+  const created = await call('POST', '/api/entries', { ...valid, entry_date: '2025-07-01' });
+  const r1 = await call('GET', '/api/changes');
+  assert.ok(r1.json.revision > r0.json.revision, 'insert raises the revision');
+  await call('DELETE', `/api/entries/${created.json.id}`);
+  const r2 = await call('GET', '/api/changes');
+  assert.ok(r2.json.revision > r1.json.revision, 'delete raises the revision');
+  const r3 = await call('GET', '/api/changes');
+  assert.equal(r3.json.revision, r2.json.revision, 'reading does not change it');
+});
