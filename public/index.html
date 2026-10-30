@@ -37,7 +37,7 @@
     #space { position: fixed; inset: 0; z-index: 0; background: radial-gradient(ellipse at 62% 45%, #0d2747 0%, #06101f 55%, #02050c 100%); }
     #space canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #white { position: fixed; inset: 0; z-index: 1; background: #fffcf0; opacity: 0; pointer-events: none; }
-    .prologue { position: relative; height: 1700vh; }
+    .prologue { position: relative; height: 2200vh; }
     /* ---------- opening: dust veil, then Earthrise seen from the Moon (from the SELENE dashboard concept) ---------- */
     .prologue .pin { --er-display: "Michroma", "Eurostile", "Arial Black", sans-serif; --er-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
     .er-mono { font: 400 .6875rem/1.3 var(--er-mono); letter-spacing: .16em; text-transform: uppercase; }
@@ -82,13 +82,9 @@
     /* the name: a geometric monoline wordmark (circles, straight stems, flat ends) drawn as SVG */
     .nl-word { position: relative; }
     .cp-word { display: block; width: min(80vw, 860px); max-width: 100%; height: auto; margin: 0 auto; color: #fff; overflow: visible; }
-    .nl-pulse { display: block; width: min(56vw, 460px); height: auto; margin: .9rem auto 0; overflow: visible; }
-    .nl-pulse path { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: beat 2.2s linear infinite; }
-    @keyframes beat { 0% { stroke-dashoffset: 1; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
-    .nl-sub { margin-top: 1.2rem; font: 500 clamp(.72rem, 1.3vw, .95rem)/1 var(--mono); letter-spacing: .5em; margin-right: -.5em; text-transform: uppercase; color: rgba(225, 230, 238, .75); }
+    .nl-sub { margin-top: .9rem; font: 500 clamp(.72rem, 1.3vw, .95rem)/1 var(--mono); letter-spacing: .5em; margin-right: -.5em; text-transform: uppercase; color: rgba(225, 230, 238, .75); }
     .nl-sub b { color: #fff; font-weight: 500; }
     @media (max-width: 600px) { .nl-sub { letter-spacing: .3em; margin-right: -.3em; white-space: nowrap; } }
-    @media (prefers-reduced-motion: reduce) { .nl-pulse path { animation: none; stroke-dashoffset: 0; } }
     .ecard { --o: 0; position: absolute; left: max(16px, 5vw); top: 50%; width: min(26rem, calc(100% - 32px)); padding: 26px; border-radius: 24px; background: linear-gradient(135deg, rgba(14, 26, 44, .58), rgba(6, 12, 24, .34)); border: 1px solid rgba(255, 255, 255, .22); color: #eef6ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 30px rgba(255, 255, 255, .05), 0 30px 80px rgba(0, 0, 0, .35); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%);
       opacity: var(--o); visibility: hidden; transform: translateY(calc(-50% + (1 - var(--o)) * 40px)); }
     .ecard.center.hot { top: auto; bottom: 7vh; transform: translate(-50%, calc((1 - var(--o)) * 40px)); }
@@ -255,13 +251,14 @@
         <div class="er-title" id="erTitle"><h2>EARTHRISE</h2><p class="er-mono">A concept of carbon emission</p></div>
         <div class="er-hud" id="erHud" aria-hidden="true">
           <div class="br"></div>
-          <div class="tl"><p>Warming <span class="hot" id="erTemp">+0.00 °C</span></p><p class="dim" id="erTempNote">Since 1850–1900</p></div>
-          <div class="tr"><p>Earth elev <span class="ev" id="erElev">0.0°</span></p><p class="dim">Above horizon</p></div>
+          <div class="tl"><p><span id="erTlLabel">Star</span> <span class="hot" id="erTemp">5,800 K</span></p><p class="dim" id="erTempNote">Surface temperature</p></div>
+          <div class="tr" id="erTr"><p>Earth elev <span class="ev" id="erElev">0.0°</span></p><p class="dim">Above horizon</p></div>
           <div class="bl">Mare Tranquillitatis · 0.67°N 23.47°E</div>
           <div class="brr">Scroll <span class="er-bounce" style="margin:0">↓</span></div>
         </div>
-        <p class="er-sub" id="erSub1">Today the world is <b>1.44 °C</b> warmer. And it keeps rising.</p>
-        <p class="er-sub" id="erSub2">Keep burning, and the planet burns like a sun.</p>
+        <p class="er-sub" id="erSub1">Today the world is <b>1.44 °C</b> warmer than in 1850–1900. And it keeps rising.</p>
+        <p class="er-sub" id="erSub2">Before there was an Earth, a star had to die.</p>
+        <p class="er-sub" id="erSub3">From 1850 to today, year by year, the Earth is getting warmer.</p>
         <div class="er-lbl" id="erGalaxy"><p>THE MILKY WAY</p><p class="er-mono">About 100,000 light-years across</p></div>
         <div class="er-lbl" id="erEarth"><p>EARTH · TODAY</p><p class="er-mono">One planet. Still warming.</p></div>
         <div class="er-veil" id="erVeil" aria-hidden="true"><div class="er-veil-in">
@@ -274,34 +271,33 @@
           <p class="co2-title">Carbon dioxide (CO₂)</p>
           <div class="months"><div class="track"><i id="monthbar"></i></div><div class="ticks"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div></div>
         </div>
-        <article class="ecard" data-a=".622" data-b=".706">
+        <article class="ecard" data-a="0.7" data-b="0.755">
           <p class="ek">Our atmosphere</p>
           <h2>Air has no borders.</h2>
           <p>CO₂ released anywhere rides the winds around the whole planet. The glowing trails start where people burn the most fuel.</p>
-          <p class="stat"><b data-count="432" data-from="313" data-a=".622" data-dur=".042" data-suf=" ppm">432 ppm</b><span>CO₂ in the air at Mauna Loa in May 2026. In 1958 it was 313 ppm.</span></p>
+          <p class="stat"><b data-count="432" data-from="313" data-a="0.7" data-dur="0.0333" data-suf=" ppm">432 ppm</b><span>CO₂ in the air at Mauna Loa in May 2026. In 1958 it was 313 ppm.</span></p>
           <p class="src">Illustration of typical wind belts, not live data · <a href="https://today.ucsd.edu/story/annual-carbon-dioxide-peak-reaches-432-parts-per-million" target="_blank" rel="noopener">Source: Scripps</a></p>
         </article>
-        <article class="ecard" data-a=".714" data-b=".79">
+        <article class="ecard" data-a="0.79" data-b="0.835">
           <p class="ek warn">Warning · Heat</p>
           <h2>A planet with a fever.</h2>
           <p>2025 was one of the three warmest years ever measured. Heatwaves are longer and hotter.</p>
-          <p class="stat hot"><b data-count="1.44" data-a=".714" data-dur=".05" data-dec="2" data-pre="+" data-suf=" °C">+1.44 °C</b><span>above the 1850–1900 average (± 0.13 °C)</span></p>
+          <p class="stat hot"><b data-count="1.44" data-a="0.79" data-dur="0.0397" data-dec="2" data-pre="+" data-suf=" °C">+1.44 °C</b><span>above the 1850–1900 average (± 0.13 °C)</span></p>
           <p class="src"><a href="https://wmo.int/news/media-centre/wmo-confirms-2025-was-one-of-warmest-years-record" target="_blank" rel="noopener">Source: World Meteorological Organization</a></p>
         </article>
-        <article class="ecard" data-a=".824" data-b=".908">
+        <article class="ecard" data-a="0.873" data-b="0.925">
           <p class="ek warn">Warning · Ice</p>
           <h2>The Alps are losing their glaciers.</h2>
           <canvas class="glacier" id="glacier" aria-hidden="true"></canvas>
           <p>Swiss glaciers lost 3 % of their volume in 2025 alone, and about a quarter in the last ten years.</p>
           <p class="src"><a href="https://theturtleislandnews.com/index.php/2025/10/01/swiss-glaciers-shrank-3-this-year-the-fourth-biggest-retreat-on-record-experts-say/" target="_blank" rel="noopener">Source: GLAMOS and the Swiss Academy of Sciences, via AP</a></p>
         </article>
-        <article class="ecard center" data-a=".916" data-b=".966">
+        <article class="ecard center" data-a="0.952" data-b="0.985">
           <h2>Now, zoom in.</h2>
           <p>A summer afternoon in southern Germany.</p>
         </article>
         <div class="nova-logo" id="novaLogo" role="img" aria-label="Carbon Pulse presents CarbonLog">
-          <div class="nl-word" aria-hidden="true"><svg class="cp-word" viewBox="-2 -10 1086 200" aria-hidden="true"><path d="M79.73 63.23 A40 40 0 1 0 79.73 116.77 M151.00 50.00 A40 40 0 0 0 151.00 130.00 A40 40 0 0 0 151.00 50.00 Z M191.00 40.00 L191.00 140.00 M220.00 140.00 L220.00 40.00 M220.00 90.00 A40 40 0 0 1 278.78 54.68 M345.00 50.00 A40 40 0 0 0 345.00 130.00 A40 40 0 0 0 345.00 50.00 Z M305.00 0.00 L305.00 140.00 M454.00 50.00 A40 40 0 0 0 454.00 130.00 A40 40 0 0 0 454.00 50.00 Z M523.00 140.00 L523.00 40.00 M523.00 80.00 A40 40 0 0 1 603.00 80.00 L603.00 140.00 M716.00 50.00 A40 40 0 0 0 716.00 130.00 A40 40 0 0 0 716.00 50.00 Z M676.00 40.00 L676.00 180.00 M865.00 40.00 L865.00 140.00 M785.00 40.00 L785.00 100.00 A40 40 0 0 0 865.00 100.00 M894.00 0.00 L894.00 140.00 M961.13 61.55 A20 20 0 1 0 943.00 90.00 A20 20 0 1 1 924.87 118.45 M1072.00 90.00 A40 40 0 1 0 1063.52 114.63 M992.00 90.00 L1072.00 90.00" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="butt" stroke-linejoin="round"/></svg></div>
-          <svg class="nl-pulse" viewBox="0 0 520 60" aria-hidden="true"><path pathLength="1" d="M0 30 H190 L205 30 L215 10 L228 52 L240 4 L252 44 L262 30 H520"/></svg>
+          <div class="nl-word" aria-hidden="true"><svg class="cp-word" viewBox="-2 -10 1106 200" aria-hidden="true"><path d="M114.59 29.85 A60 60 0 1 0 114.59 110.15 M179.00 50.00 A40 40 0 0 0 179.00 130.00 A40 40 0 0 0 179.00 50.00 Z M219.00 40.00 L219.00 140.00 M248.00 140.00 L248.00 40.00 M248.00 90.00 A40 40 0 0 1 306.78 54.68 M373.00 50.00 A40 40 0 0 0 373.00 130.00 A40 40 0 0 0 373.00 50.00 Z M333.00 0.00 L333.00 140.00 M482.00 50.00 A40 40 0 0 0 482.00 130.00 A40 40 0 0 0 482.00 50.00 Z M551.00 140.00 L551.00 40.00 M551.00 80.00 A40 40 0 0 1 631.00 80.00 L631.00 140.00 M704.00 140.00 L704.00 0.00 M704.00 10.00 L740.00 10.00 A36 36 0 0 1 740.00 82.00 L704.00 82.00 M885.00 40.00 L885.00 140.00 M805.00 40.00 L805.00 100.00 A40 40 0 0 0 885.00 100.00 M914.00 0.00 L914.00 140.00 M981.13 61.55 A20 20 0 1 0 963.00 90.00 A20 20 0 1 1 944.87 118.45 M1092.00 90.00 A40 40 0 1 0 1083.52 114.63 M1012.00 90.00 L1092.00 90.00" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="butt" stroke-linejoin="round"/></svg></div>
           <p class="nl-sub" aria-hidden="true">presents <b>CarbonLog</b></p>
         </div>
         <div class="cue" id="cue" aria-hidden="true"><span></span></div>
@@ -1256,7 +1252,7 @@
       cue.style.opacity = reduce ? 0 : (clamp((t - 2) / .6, 0, 1) * (1 - smooth(clamp((sy - eTop) / (vh * .15), 0, 1)))).toFixed(3);
       const pp = clamp((sy - eTop) / eLen, 0, 1);
       for (const c of eCards) {
-        const o = smooth(clamp((pp - c.a) / .05, 0, 1)) * (1 - smooth(clamp((pp - c.b) / .05, 0, 1)));
+        const o = smooth(clamp((pp - c.a) / .033, 0, 1)) * (1 - smooth(clamp((pp - c.b) / .033, 0, 1)));
         c.el.style.setProperty('--o', o.toFixed(3)); c.el.style.visibility = o < .01 ? 'hidden' : 'visible';
       }
       const hp = clamp((sy - hTop) / hLen, 0, 1);
@@ -1306,17 +1302,19 @@
       const pp = clamp((sy - eTop) / eLen, 0, 1), endE = eTop + eLen;
       if (sy < endE) {
         space.style.visibility = 'visible'; drawPrologue(pp, t, dt);
-        if (!banged && lastPP >= 0 && lastPP < .233 && pp >= .233 && pp < .3 && window.CLSound) { CLSound.bigBang(); banged = true; }   // the planet bursts, the name appears
-        if (pp < .2) banged = false;
+        const bangAt = v(OP.B - 2);
+        if (!banged && lastPP >= 0 && lastPP < bangAt && pp >= bangAt && pp < v(OP.B + 100) && window.CLSound) { CLSound.bigBang(); banged = true; }   // the star dies, the universe begins, the name appears
+        if (pp < v(OP.B - 60)) banged = false;
         lastPP = pp;
       }
       else space.style.visibility = 'hidden';
       if (window.CLSound) CLSound.burn(sy < endE && !root.classList.contains('appopen') ? burnLvl : 0);
       const endH = hTop + hLen; let wOp, wCol;
       if (sy < endE) {
-        const bang = .96 * smooth(clamp((pp - .229) / .005, 0, 1)) * (1 - smooth(clamp((pp - .236) / .03, 0, 1)));   // the planet bursts
-        const sun = .7 * smooth(clamp((pp - .545) / .012, 0, 1)) * (1 - smooth(clamp((pp - .558) / .02, 0, 1)));    // flying past the Sun
-        wOp = Math.max(bang, sun, smooth(clamp((pp - .958) / .034, 0, 1))); wCol = pp < .4 ? '#fff4e2' : pp < .8 ? '#fffaf0' : '#ffd9b4';
+        const bang = .96 * smooth(range(pp, v(OP.B - 8), v(OP.B))) * (1 - smooth(range(pp, v(OP.B + 3), v(OP.B + 51))));   // the Big Bang
+        const sun = .7 * smooth(range(pp, v(OP.B + 496), v(OP.B + 515))) * (1 - smooth(range(pp, v(OP.B + 517), v(OP.B + 549))));   // flying past the Sun
+        const diveEnd = STORY0 + .9 * STORY_LEN;
+        wOp = Math.max(bang, sun, smooth(clamp((pp - diveEnd) / (.081 * STORY_LEN), 0, 1))); wCol = pp < v(OP.B + 400) ? '#fff4e2' : pp < STORY0 + .5 * STORY_LEN ? '#fffaf0' : '#ffd9b4';
       }
       else if (sy < hTop) { wOp = 1 - smooth(clamp((sy - endE) / (vh * .4), 0, 1)); wCol = '#ffd9b4'; }
       else if (sy < endH) { wOp = smooth(clamp((hp - .9) / .08, 0, 1)); wCol = '#0c1626'; }             // night falls after the hot sunset
@@ -1535,7 +1533,7 @@
     let scrollVel = 0;
     const logo = $('#novaLogo');
     const erVeil = $('#erVeil'), erDust = $('#erDust'), erTitle = $('#erTitle'), erHud = $('#erHud'), erTemp = $('#erTemp'), erTempNote = $('#erTempNote'), erElev = $('#erElev');
-    const erSub1 = $('#erSub1'), erSub2 = $('#erSub2'), erGalaxy = $('#erGalaxy'), erEarth = $('#erEarth');
+    const erSub1 = $('#erSub1'), erSub2 = $('#erSub2'), erSub3 = $('#erSub3'), erTlLabel = $('#erTlLabel'), erTr = $('#erTr'), erGalaxy = $('#erGalaxy'), erEarth = $('#erEarth');
     const dctx2 = erDust.getContext('2d');
     function useProg(prog, loc) { gl2.useProgram(prog); gl2.bindBuffer(gl2.ARRAY_BUFFER, quadBuf); gl2.enableVertexAttribArray(loc); gl2.vertexAttribPointer(loc, 2, gl2.FLOAT, false, 0, 0); }
     const range = (v, a, b) => clamp((v - a) / (b - a), 0, 1);
@@ -1651,12 +1649,12 @@
     let lastLnZ = 0;
 
     function drawCosmos(g, pp, t, Wd, Hd, C, R0) {
-      const blastT = pp - .235;
+      const blastT = pp - v(OP.B);
       if (blastT < 0) return;
-      const bt = clamp(blastT / .1, 0, 1), rw = smooth(range(pp, .325, .395)), gf = smooth(range(pp, .39, .45));
-      const zk = range(pp, .45, .56), Z = Math.exp(7.4 * Math.pow(smooth(zk), 1.5)), lnZ = Math.log(Z);
+      const bt = clamp(blastT / v(160), 0, 1), rw = smooth(range(pp, v(OP.B + 144), v(OP.B + 256))), gf = smooth(range(pp, v(OP.B + 248), v(OP.B + 344)));
+      const zk = range(pp, v(OP.B + 344), v(OP.B + 520)), Z = Math.exp(7.4 * Math.pow(smooth(zk), 1.5)), lnZ = Math.log(Z);
       const streak = clamp((lnZ - lastLnZ) * 2.4, 0, .45); lastLnZ = lnZ;
-      const fadeG = 1 - smooth(range(pp, .535, .565));
+      const fadeG = 1 - smooth(range(pp, v(OP.B + 480), v(OP.B + 528)));
       if (fadeG < .005) return;
       const Dmax = Math.max(Wd, Hd) * .62, ease = 1 - Math.pow(1 - bt, 4);
       const Rg = Math.min(Wd, Hd) * (mobile ? .62 : .5), rot = (reduce ? 0 : t * .015);
@@ -1702,7 +1700,7 @@
         } else { col = STAR_COL[cCol[i]]; size = (isB ? 1.3 : cSz[i]) * gdpr; }
         if (gf > 0) size *= Math.min(local ? 6 : 4, Math.pow(Z, local ? .3 : .22));
         g.globalAlpha = a * tw;
-        if (i < NSH && gf < .6) {                                  // burning shards of the planet
+        if (i < NSH && gf < .6) {                                  // burning shards of the star
           const ang = cSpin[i] * bt * (1 - rw) + cA[i], k = 1 - gf / .6, sz = size * k + 1;
           g.fillStyle = `rgb(${col})`; g.beginPath();
           shV[i].forEach(([va, vl], j) => { const px = x + Math.cos(va + ang) * vl * sz, py = y + Math.sin(va + ang) * vl * sz; if (j) g.lineTo(px, py); else g.moveTo(px, py); });
@@ -1775,9 +1773,53 @@
       }
     }
 
+    // ---------- opening timeline, in vh of scroll (the #earth section is 2200vh, so 2100vh of travel) ----------
+    // A star dies (100–300) -> Big Bang + name (300) -> galaxy (548–644) -> zoom to the Sun (644–820)
+    // -> Earth rises over the Moon (790–960) -> warming 1850 -> today (960–1300) -> into the CO2 story (1310–1400+).
+    const OP = { E: 2100, DIE: 100, GIANT: 230, B: 300, ARR: 790, RISE: 960, W0: 960, W1: 1300, T0: 1310, T1: 1400 };
+    const v = (x) => x / OP.E;
+    const STORY0 = v(OP.T1), STORY_LEN = 1 - STORY0;
+    // Global temperature vs 1850–1900 (°C), simplified path through WMO/IPCC values; illustration only.
+    const WARM = [[1850, 0], [1910, -.05], [1945, .3], [1975, .25], [2000, .75], [2015, 1.1], [2026, 1.44]];
+    function warmAt(year) {
+      for (let i = 1; i < WARM.length; i++) if (year <= WARM[i][0]) { const [y0, t0] = WARM[i - 1], [y1, t1] = WARM[i]; return lerp(t0, t1, (year - y0) / (y1 - y0)); }
+      return WARM[WARM.length - 1][1];
+    }
+    const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+    const mix3c = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)].map(Math.round);
+
+    // a star: yellow-white main sequence, swelling into a red giant, collapsing to a blinding point
+    function drawStar(g, cx, cy, R, red, bright, t) {
+      const c1 = mix3c([255, 252, 238], [255, 196, 150], red), c2 = mix3c([255, 224, 150], [238, 96, 46], red), c3 = mix3c([255, 160, 70], [150, 34, 22], red);
+      g.globalCompositeOperation = 'lighter';
+      const bR = R * (3.2 + 1.6 * bright);
+      const bloom = g.createRadialGradient(cx, cy, R * .5, cx, cy, bR);
+      bloom.addColorStop(0, rgba(c2, Math.min(.85, .42 * bright))); bloom.addColorStop(.35, rgba(c3, Math.min(.5, .16 * bright))); bloom.addColorStop(1, rgba(c3, 0));
+      g.fillStyle = bloom; g.fillRect(cx - bR, cy - bR, bR * 2, bR * 2);
+      const n = 56, rot = reduce ? 0 : t * .04;
+      g.lineCap = 'round';
+      for (let i = 0; i < n; i++) {                                 // corona
+        const a = i / n * 6.2832 + rot, fl = .5 + .5 * Math.sin(i * 12.9898 + (reduce ? 0 : t * 1.4) + Math.sin(i * 3.1)), L = R * (1.12 + .45 * fl);
+        g.strokeStyle = rgba(c2, .1 * Math.min(1.5, bright)); g.lineWidth = R * (.035 + .045 * fl);
+        g.beginPath(); g.moveTo(cx + Math.cos(a) * R * .9, cy + Math.sin(a) * R * .9); g.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); g.stroke();
+      }
+      g.globalCompositeOperation = 'source-over';
+      const disc = g.createRadialGradient(cx - R * .15, cy - R * .15, 0, cx, cy, R * 1.04);
+      disc.addColorStop(0, rgba(c1, 1)); disc.addColorStop(.55, rgba(c2, 1)); disc.addColorStop(.86, rgba(c3, 1)); disc.addColorStop(1, rgba(c3, 0));
+      g.fillStyle = disc; g.beginPath(); g.arc(cx, cy, R * 1.04, 0, 6.2832); g.fill();
+      if (!reduce && R > 6) {                                       // boiling surface, convection cells
+        g.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 30; i++) {
+          const a = i * 2.39996, rr = R * .8 * Math.sqrt((i + .5) / 30), x = cx + Math.cos(a + t * .06) * rr, y = cy + Math.sin(a + t * .06) * rr, sz = R * (.14 + .07 * Math.sin(t * 1.9 + i));
+          g.globalAlpha = .16; g.drawImage(cosGlow, x - sz, y - sz, sz * 2, sz * 2);
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
+    }
+
     function updateLogo(pp) {
       if (!logo) return;
-      const k = smooth(range(pp, .248, .285)), out = smooth(range(pp, .31, .336)), o = k * (1 - out);
+      const k = smooth(range(pp, v(OP.B + 22), v(OP.B + 80))), out = smooth(range(pp, v(OP.B + 120), v(OP.B + 162))), o = k * (1 - out);
       show(logo, o);
       logo.style.setProperty('--s', (.04 + .96 * k - out * .85).toFixed(3));
       logo.style.setProperty('--rx', ((1 - k) * 75).toFixed(1) + 'deg');
@@ -1789,60 +1831,74 @@
       const Wd = gcv.width, Hd = gcv.height, g = actx;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, Wd, Hd);
       sliceFor(Wd, Hd);
-      const early = pp < .58;
+      const { s, ox, oy } = SLICE, cx0 = Wd / 2, cy0 = Hd / 2, vhp = Hd / 100;
+      const B = v(OP.B), afterB = pp >= B;
+
       // ----- the dust veil -----
-      const sp = pp < .0825 ? pp / .125 : pp < .245 ? .66 : lerp(.7, 1, range(pp, .245, .3));
-      const veil = 1 - range(sp, 0, .18);
+      const vk = range(pp, 0, v(40)), veil = 1 - vk;
       show(erVeil, veil);
-      erVeil.style.transform = `translate3d(0, ${(-range(sp, 0, .18) * 24).toFixed(2)}vh, 0) scale(${(1 + range(sp, 0, .18) * .25).toFixed(3)})`;
+      erVeil.style.transform = `translate3d(0, ${(-vk * 24).toFixed(2)}vh, 0) scale(${(1 + vk * .25).toFixed(3)})`;
       if (veil > .001) {
         const w = erDust.width, h = erDust.height;
         dctx2.clearRect(0, 0, w, h); dctx2.fillStyle = '#dfe6f2';
         for (const m of dustMotes) {
           if (!reduce) { m.x += .006 * m.s * dt; m.y -= .004 * m.s * dt; if (m.x > 1) m.x -= 1; if (m.y < 0) m.y += 1; }
-          dctx2.globalAlpha = m.a * veil; dctx2.beginPath(); dctx2.arc(m.x * w, (m.y - sp * .6) * h, m.r * gdpr * (1 + sp * 4), 0, 6.2832); dctx2.fill();
+          dctx2.globalAlpha = m.a * veil; dctx2.beginPath(); dctx2.arc(m.x * w, (m.y - vk * .1) * h, m.r * gdpr * (1 + vk * .7), 0, 6.2832); dctx2.fill();
         }
         dctx2.globalAlpha = 1; erDust.style.visibility = 'visible';
       } else erDust.style.visibility = 'hidden';
-      // ----- heat, sun and blast clocks -----
-      const hk = smooth(range(pp, .09, .23)), melt = smooth(range(pp, .15, .215)), sunK = smooth(range(pp, .175, .232)), blast = pp >= .234;
-      const shakeA = reduce ? 0 : (smooth(range(pp, .19, .234)) * 7 + (blast ? 18 * (1 - smooth(range(pp, .234, .27))) : 0)) * gdpr;
+
+      // ----- the Moon with the astronaut: in from the start, away at the Big Bang, back for the Earthrise, away into the story -----
+      let sp;
+      if (pp < B) sp = .66 * eo(range(pp, 0, v(60)));
+      else if (pp < v(OP.ARR - 10)) sp = lerp(.7, 1, range(pp, B, v(OP.B + 70)));
+      else if (pp < v(OP.T0)) sp = lerp(1, .7, eo(range(pp, v(OP.ARR), v(OP.ARR + 110))));
+      else sp = lerp(.7, 1, range(pp, v(OP.T0), v(OP.T0 + 70)));
+      const moonExit = range(sp, .7, 1);
+
+      // ----- the dying star -----
+      const swell = smooth(range(pp, v(OP.DIE), v(OP.GIANT))), coll = range(pp, v(OP.GIANT), v(OP.B - 10)), collE = coll * coll;
+      const shakeA = reduce ? 0 : (smooth(coll) * 8 + (afterB ? 18 * (1 - smooth(range(pp, B, v(OP.B + 60)))) : 0)) * gdpr;
       const sh = shakeA ? [(Math.random() - .5) * shakeA, (Math.random() - .5) * shakeA] : [0, 0];
-      // ----- Earth: rising over the Moon (pp < .235), then back as Earth today (pp > .55) -----
-      const { s, ox, oy } = SLICE, cx0 = Wd / 2, cy0 = Hd / 2, vhp = Hd / 100;
-      const rise = eo(range(sp, .04, .5)), exit = range(sp, .7, 1);
-      let heat, ice = 1, glow = 0, alpha, Z = 1, o = 0, intro = 0, earthC = [0, 0], R0 = 1;
-      if (pp < .3) {
-        const sc = lerp(.92, 1, rise) * (1 + sunK * .12), ty = (lerp(34, 0, rise) - exit * 12) * vhp;
-        G.cx = cx0 * (1 - sc) + ox * sc + 1050 * s * sc + sh[0]; G.cy = cy0 * (1 - sc) + oy * sc + 448 * s * sc + ty + sh[1];
-        if (SLICE.portrait) G.cy -= Hd * .02;
-        G.R = 215 * s * sc; G.lat0 = 18; G.lon0 = reduce ? 15 : 15 + t * 3 - pp * 60;
-        heat = .1 + .9 * hk + melt * .8; alpha = 1 - (blast ? 1 : 0);
-        earthC = [G.cx, G.cy]; R0 = G.R;
-      } else {
-        intro = smooth(range(pp, .55, .605)); o = clamp((pp - .58) / .42, 0, 1);
+      const starX = ox + 1050 * s + sh[0], starY = oy + 448 * s + (SLICE.portrait ? -Hd * .02 : 0) + sh[1] + lerp(8, 0, eo(range(pp, 0, v(60)))) * vhp;
+
+      // ----- warming clock (1850 -> 2026) -----
+      const wk = smooth(range(pp, v(OP.W0), v(OP.W1))), year = Math.round(lerp(1850, 2026, wk)), tempC = Math.max(0, warmAt(lerp(1850, 2026, wk)));
+      const heatW = tempC / 1.44;
+
+      // ----- Earth: rising over the Moon, warming, then into the CO2 story -----
+      const rise = eo(range(pp, v(OP.ARR + 10), v(OP.RISE))), kT = smooth(range(pp, v(OP.T0), v(OP.T1)));
+      const o = clamp((pp - STORY0) / STORY_LEN, 0, 1);
+      let heat = 0, ice = 1, glow = 0, alpha = 0, Z = 1, blue = 0;
+      if (pp >= v(OP.ARR - 10)) {
+        // Earth above the Moon's horizon (same place the star was)
+        const sc = lerp(.92, 1, rise), ty = lerp(34, 0, rise) * vhp;
+        const mX = cx0 * (1 - sc) + ox * sc + 1050 * s * sc, mY = cy0 * (1 - sc) + oy * sc + 448 * s * sc + ty - (SLICE.portrait ? Hd * .02 : 0);
+        const mR = 215 * s * sc, mLon = (reduce ? 15 : 15 + t * 3) - pp * 60, mLat = 18;
+        const mHeat = .1 + .7 * heatW;
+        // the CO2 story's starting view
         const e = smooth(clamp((o - .46) / .14, 0, 1));
-        const spin = reduce ? -80 : -80 + t * 4 - o * 70;
-        G.lon0 = lerpAngle(spin, 9.5, e); G.lat0 = lerp(24, 47.8, e);
-        const zl = Math.log(6.5) * smooth(clamp((o - .58) / .22, 0, 1)) + Math.log(40) * Math.pow(clamp((o - .8) / .2, 0, 1), 2.2);
-        Z = Math.exp(zl);
+        const sLon = lerpAngle(reduce ? -80 : -80 + t * 4 - o * 70, 9.5, e), sLat = lerp(24, 47.8, e);
+        Z = Math.exp(Math.log(6.5) * smooth(clamp((o - .58) / .22, 0, 1)) + Math.log(40) * Math.pow(clamp((o - .8) / .2, 0, 1), 2.2));
         const base = (mobile ? .44 * vw : .4 * Math.min(vw, vh)) * gdpr;
-        G.R = base * Z * (.08 + .92 * intro);
-        G.cx = Wd * (mobile ? .5 : lerp(.6, .5, smooth(clamp((o - .74) / .1, 0, 1))) * intro + .5 * (1 - intro));
-        G.cy = Hd * (mobile ? lerp(.36, .5, smooth(clamp((o - .74) / .1, 0, 1))) * intro + .5 * (1 - intro) : .5);
-        heat = .2 * smooth(clamp(o / .3, 0, 1)) + .8 * smooth(clamp((o - .3) / .3, 0, 1));
+        const sR = base * Z, sX = Wd * (mobile ? .5 : lerp(.6, .5, smooth(clamp((o - .74) / .1, 0, 1)))), sY = Hd * (mobile ? lerp(.36, .5, smooth(clamp((o - .74) / .1, 0, 1))) : .5);
+        const sHeat = .2 * smooth(clamp(o / .3, 0, 1)) + .8 * smooth(clamp((o - .3) / .3, 0, 1));
+        G.cx = lerp(mX, sX, kT); G.cy = lerp(mY, sY, kT); G.R = lerp(mR, sR, kT);
+        G.lon0 = lerpAngle(mLon, sLon, kT); G.lat0 = lerp(mLat, sLat, kT);
+        heat = lerp(mHeat, Math.max(sHeat, mHeat * (1 - smooth(clamp(o / .05, 0, 1)))), kT);
+        blue = (1 - .8 * heatW) * (1 - kT);
         ice = 1 - .85 * smooth(clamp((o - .62) / .16, 0, 1));
         glow = smooth(clamp((o - .56) / .08, 0, 1)) * (1 - smooth(clamp((o - .86) / .06, 0, 1)));
-        alpha = intro;
+        alpha = smooth(range(pp, v(OP.ARR), v(OP.ARR + 50)));
       }
       G.cL = Math.cos(G.lon0 * D2R); G.sL = Math.sin(G.lon0 * D2R); G.cA = Math.cos(G.lat0 * D2R); G.sA = Math.sin(G.lat0 * D2R);
       const hiMix = smooth(clamp((Z - 1.8) / 2.5, 0, 1));
-      burnLvl = pp < .3 ? (blast ? 0 : rise * (.12 + .88 * hk)) : alpha * .75 * (1 - smooth(clamp((o - .86) / .08, 0, 1)));
-      if (!reduce && (pp < .24 || pp > .54)) stepParticles(dt, t);
+      burnLvl = pp < v(OP.ARR) ? 0 : pp < v(OP.T0) ? alpha * (.06 + .55 * heatW) : .75 * (1 - smooth(clamp((o - .86) / .08, 0, 1)));
+      if (!reduce && alpha > 0) stepParticles(dt, t);
       if (gl2) {
         gl2.viewport(0, 0, Wd, Hd); gl2.clearColor(0, 0, 0, 0); gl2.clear(gl2.COLOR_BUFFER_BIT);
         gl2.enable(gl2.BLEND); gl2.blendFunc(gl2.ONE, gl2.ONE_MINUS_SRC_ALPHA);
-        if (alpha > .003 && G.R > .5 && (pp < .3 || pp > .54)) {
+        if (alpha > .003 && G.R > .5) {
           useProg(globeProg, gLoc);
           splat();
           gl2.activeTexture(gl2.TEXTURE2); gl2.bindTexture(gl2.TEXTURE_2D, densTex);
@@ -1850,18 +1906,28 @@
           gl2.uniform2f(GU.uC, G.cx, Hd - G.cy); gl2.uniform1f(GU.uR, G.R); gl2.uniform1f(GU.uPx, 1 / G.R);
           gl2.uniform1f(GU.uLat, G.lat0 * D2R); gl2.uniform1f(GU.uLon, G.lon0 * D2R);
           gl2.uniform1f(GU.uTime, reduce ? 0 : t); gl2.uniform1f(GU.uHeat, heat); gl2.uniform1f(GU.uIce, ice);
-          gl2.uniform1f(GU.uGlow, glow); gl2.uniform1f(GU.uAlpha, alpha); gl2.uniform1f(GU.uHi, hiMix); gl2.uniform1f(GU.uMelt, pp < .3 ? melt : 0); gl2.uniform1f(GU.uBlue, pp < .3 ? 1 - smooth(range(pp, .1, .19)) : 0);
+          gl2.uniform1f(GU.uGlow, glow); gl2.uniform1f(GU.uAlpha, alpha); gl2.uniform1f(GU.uHi, hiMix); gl2.uniform1f(GU.uMelt, 0); gl2.uniform1f(GU.uBlue, blue);
           gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
         }
       }
+
       // ----- 2D layers on top of the globe -----
-      if (!gl2 && alpha > .01) { const gr = g.createRadialGradient(G.cx, G.cy, G.R * .2, G.cx, G.cy, G.R * 1.15); gr.addColorStop(0, pp < .3 ? '#2a5c9a' : '#3a2414'); gr.addColorStop(.85, pp < .3 ? '#173a6b' : '#6b3511'); gr.addColorStop(1, 'rgba(111,182,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(G.cx, G.cy, G.R * 1.15, 0, 6.2832); g.fill(); }
-      if (pp < .245) drawSun(g, G.cx, G.cy, G.R, blast ? 0 : sunK, hk * (blast ? 0 : 1), t);
-      if (pp < .3) { drawMoonCache.c = earthC; drawMoonCache.r = R0; }
+      if (!gl2 && alpha > .01) { const gr = g.createRadialGradient(G.cx, G.cy, G.R * .2, G.cx, G.cy, G.R * 1.15); gr.addColorStop(0, kT < .5 ? '#2a5c9a' : '#3a2414'); gr.addColorStop(.85, kT < .5 ? '#173a6b' : '#6b3511'); gr.addColorStop(1, 'rgba(111,182,255,0)'); g.globalAlpha = alpha; g.fillStyle = gr; g.beginPath(); g.arc(G.cx, G.cy, G.R * 1.15, 0, 6.2832); g.fill(); g.globalAlpha = 1; }
+      if (pp < B) {
+        // red light from the giant fills the sky, then the star collapses to a blinding point
+        if (swell > .01) { const sky = g.createRadialGradient(starX, starY, 0, starX, starY, Math.max(Wd, Hd) * 1.1); sky.addColorStop(0, `rgba(255,96,40,${(.3 * swell * (1 - collE)).toFixed(3)})`); sky.addColorStop(.5, `rgba(150,30,20,${(.12 * swell * (1 - collE)).toFixed(3)})`); sky.addColorStop(1, 'rgba(40,0,0,0)'); g.fillStyle = sky; g.fillRect(0, 0, Wd, Hd); }
+        const pulse = 1 + (reduce ? 0 : .045 * swell * Math.sin(t * 2.6) + .08 * coll * Math.sin(t * 31));
+        const R = (62 + 168 * swell) * s * (1 - .985 * collE) * pulse;
+        drawStar(g, starX, starY, Math.max(2 * gdpr, R), swell * (1 - coll), .7 + .5 * swell + 5 * collE, t);
+        drawMoonCache.c = [starX, starY]; drawMoonCache.r = 120 * s;
+      }
+      if (heatW > .01 && pp < v(OP.T1)) drawSun(g, G.cx, G.cy, G.R, 0, heatW * .55 * alpha * (1 - kT), t);   // the sky warms with the planet
       drawCosmos(g, pp, t, Wd, Hd, drawMoonCache.c, drawMoonCache.r);
-      if (exit < 1) drawMoon(g, sp, blast ? lerp(1, .25, range(pp, .234, .3)) : Math.max(hk * .8, sunK), sh);
-      // ----- Earth today: Germany, the Alps and Reutlingen (the original story) -----
-      if (!early || pp > .55) {
+      const moonWarm = pp < B ? Math.max(swell * .8, coll * .95) : pp < v(OP.ARR) ? lerp(.95, .25, range(pp, B, v(OP.B + 100))) : heatW * .45;
+      if (moonExit < 1) drawMoon(g, sp, moonWarm, sh);
+
+      // ----- Earth today: Germany, the Alps and Reutlingen (the CO2 story, unchanged) -----
+      if (pp >= v(OP.T0)) {
         if (glow > .01) {
           const pts = GERMANY.map(([lo, la]) => proj(la, lo, 1.001));
           if (pts.every(Boolean)) {
@@ -1890,25 +1956,35 @@
         if (glacierC && o > .54 && o < .82) drawGlacier(smooth(clamp((o - .6) / .16, 0, 1)), t);
       }
       // starfield breathes with the galaxy zoom
-      const zk = range(pp, .45, .58);
+      const zk = range(pp, v(OP.B + 344), v(OP.B + 540));
       stars.style.transform = zk > 0 && zk < 1 ? `scale(${(1 + Math.sin(zk * Math.PI) * .6).toFixed(3)})` : 'none';
+
       // ----- text and HUD -----
-      const tIn = eo(range(sp, .08, .24)), tOut = range(sp, .42, .52);
+      const tIn = eo(range(pp, v(OP.ARR + 60), v(OP.ARR + 140))), tOut = range(pp, v(OP.ARR + 210), v(OP.ARR + 270));
       show(erTitle, tIn * (1 - tOut));
       erTitle.firstElementChild.style.letterSpacing = lerp(.6, .24, tIn) + 'em';
-      erTitle.style.transform = `translate3d(0, ${(-sp * 6).toFixed(2)}vh, 0)`;
+      erTitle.style.transform = `translate3d(0, ${(-tOut * 4).toFixed(2)}vh, 0)`;
       erTitle.style.filter = tIn < .99 ? `blur(${((1 - tIn) * 10).toFixed(1)}px)` : '';
-      show(erHud, range(sp, .02, .1) * (1 - range(pp, .232, .25)));
-      const warmC = 1.44 * smooth(range(pp, .09, .155)) + 58 * Math.pow(range(pp, .17, .232), 2.4);
-      erTemp.textContent = `+${warmC.toFixed(warmC < 10 ? 2 : 1)} °C`;
-      erTempNote.textContent = pp < .165 ? 'Since 1850–1900 · today 1.44' : 'Illustration · not a forecast';
-      erElev.textContent = (rise * 12.4).toFixed(1) + '°';
-      show(erSub1, smooth(range(pp, .11, .125)) * (1 - smooth(range(pp, .158, .17))));
-      show(erSub2, smooth(range(pp, .176, .19)) * (1 - smooth(range(pp, .22, .232))));
-      show(erGalaxy, smooth(range(pp, .425, .44)) * (1 - smooth(range(pp, .47, .485))));
-      show(erEarth, smooth(range(pp, .565, .58)) * (1 - smooth(range(pp, .6, .615))));
+      const hudStar = smooth(range(pp, v(35), v(60))) * (1 - smooth(range(pp, v(OP.B - 8), v(OP.B))));
+      const hudEarth = smooth(range(pp, v(OP.ARR + 90), v(OP.ARR + 130))) * (1 - smooth(range(pp, v(OP.T0), v(OP.T0 + 30))));
+      show(erHud, Math.max(hudStar, hudEarth));
+      if (pp < v(OP.ARR)) {
+        const kelvin = coll > 0 ? lerp(3300, 900000, Math.pow(coll, 3)) : lerp(5800, 3300, swell);
+        erTlLabel.textContent = 'Star'; erTemp.textContent = `${Math.round(kelvin).toLocaleString('en-US')} K`;
+        erTempNote.textContent = coll > .02 ? 'Core collapsing' : swell > .15 ? 'Red giant · swelling' : 'Surface temperature';
+        erTr.style.visibility = 'hidden';
+      } else {
+        erTlLabel.textContent = 'Warming'; erTemp.textContent = `+${tempC.toFixed(2)} °C`;
+        erTempNote.textContent = `Year ${year} · vs 1850–1900`;
+        erTr.style.visibility = 'visible'; erElev.textContent = (rise * 12.4).toFixed(1) + '°';
+      }
+      show(erSub2, smooth(range(pp, v(120), v(140))) * (1 - smooth(range(pp, v(215), v(235)))));
+      show(erSub3, smooth(range(pp, v(OP.W0 + 20), v(OP.W0 + 45))) * (1 - smooth(range(pp, v(OP.W0 + 150), v(OP.W0 + 175)))));
+      show(erSub1, smooth(range(pp, v(OP.W1 - 110), v(OP.W1 - 85))) * (1 - smooth(range(pp, v(OP.W1 + 5), v(OP.W1 + 25)))));
+      show(erGalaxy, smooth(range(pp, v(OP.B + 300), v(OP.B + 325))) * (1 - smooth(range(pp, v(OP.B + 375), v(OP.B + 400)))));
+      show(erEarth, smooth(range(pp, v(OP.T0 + 15), v(OP.T0 + 40))) * (1 - smooth(range(pp, v(OP.T1 + 10), v(OP.T1 + 35)))));
       updateLogo(pp);
-      if (co2hud) { const ho = intro * (1 - smooth(clamp((o - .5) / .06, 0, 1))) * smooth(range(pp, .6, .62)); show(co2hud, ho); }
+      if (co2hud) show(co2hud, smooth(clamp((o - .02) / .04, 0, 1)) * (1 - smooth(clamp((o - .5) / .06, 0, 1))));
       if (monthbar && !reduce) monthbar.style.transform = `scaleX(${((t / 24) % 1).toFixed(4)})`;
     }
     const drawMoonCache = { c: [0, 0], r: 1 };

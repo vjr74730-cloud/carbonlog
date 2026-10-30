@@ -150,6 +150,17 @@ What the finished code shows was decided along the way (documented in `README.md
 - **Tests:** trigger test with Node's built-in SQLite (runs without `npm install`); API test for `/api/changes`; two separate browser windows in a test harness: an entry added in window A appeared in window B after about 3 s, and a delete updated B's dashboard.
 - **Checkout:** test-mode box removed; every payment method now opens `payment-success.html` with the order details. No card data is passed on: only the last 4 digits for the receipt.
 
+### C6. New cosmic opening and logo (30 Oct 2026)
+
+> "Instead of showing earth in the beginning show a start dying then big bang of the universe then zoom to our galaxy and then earth , rest all be the same also the human figure spectating from the beginning , then show the global warming slow by slow . And for the carbon pulse , it should be in caps for first letter like “Carbon Pulse” . Also remove the line like thing below the carbon pulse and keep the “presents carbon log” Right below ."
+
+- **Interpretation:** "a start dying" read as "a star dying". The astronaut is on screen from the first frame and watches the whole story; the Earth first appears after the galaxy zoom, rising over the Moon, and only then warms.
+- **Decisions:**
+  - All opening timings are written in **vh of scroll** (`OP` table), so phases can be moved without hunting for magic numbers.
+  - Slow warming uses a **year counter (1850 → 2026)** with a simplified temperature path ending at the WMO value **+1.44 °C**, labelled "vs 1850–1900".
+  - Capital **C** and **P** were drawn in the same geometric style as the lowercase wordmark (same stroke, cap height = ascender height).
+- **Iteration after a test:** screenshots showed two info cards overlapping ("A planet with a fever" and "The Alps…"). The overlap already existed in a smaller form; the longer opening made it visible. **Fix:** cards re-spaced and a shorter fade, then checked again.
+
 ---
 
 ## D. How to add your own prompts
