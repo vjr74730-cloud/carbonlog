@@ -1,5 +1,5 @@
 // API tests: start the real Express app on a random port with an in-memory database
-// and call it with fetch. Needs `npm install` first (express + better-sqlite3).
+// and call it with fetch. Needs `npm install` first (express; SQLite is built into Node.js).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openDb } = require('../db/connection');
@@ -161,9 +161,12 @@ test('CSV import: a valid file is imported and CO2 is calculated by the server',
   assert.equal(r.status, 201);
   assert.equal(r.json.imported, 2);
   assert.equal(await countEntries(), before + 2);
+  // earlier tests may have changed factors, so compare with the factors in use now
+  const factors = (await call('GET', '/api/factors')).json;
+  const kg = (cat) => factors.find((f) => f.category === cat).kg_co2_per_unit;
   const list = (await call('GET', '/api/entries')).json;
-  assert.equal(list.find((e) => e.note === 'import A').co2_kg, 38);
-  assert.equal(list.find((e) => e.note === 'import B').co2_kg, 14.7);
+  assert.equal(list.find((e) => e.note === 'import A').co2_kg, Math.round(100 * kg('electricity') * 1000) / 1000);
+  assert.equal(list.find((e) => e.note === 'import B').co2_kg, Math.round(420 * kg('train_travel') * 1000) / 1000);
 });
 
 test('CSV import is all-or-nothing: one bad row means nothing is saved, and the row is named', async () => {

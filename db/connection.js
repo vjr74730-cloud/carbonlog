@@ -2,7 +2,7 @@
 // The path can be overridden with CARBONLOG_DB (tests use ":memory:").
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { Database } = require('./sqlite');   // Node's built-in SQLite, no native package to install
 
 function openDb(file = process.env.CARBONLOG_DB || path.join(__dirname, '..', 'data', 'carbonlog.db')) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });

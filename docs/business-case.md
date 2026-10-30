@@ -94,7 +94,7 @@ Browser (carbonlog.html + carbonlog.js)
 Express (app.js → routes/entries.js, factors.js, targets.js, reports.js)
    │  validateEntryInput() + calculateCo2()   ← services/calculator.js
    ▼
-SQLite (db/schema.sql via better-sqlite3): emission_factors, entries, targets
+SQLite (db/schema.sql via Node's built-in node:sqlite): emission_factors, entries, targets
 ```
 
 ## 8. Known risks and limitations
@@ -102,6 +102,6 @@ SQLite (db/schema.sql via better-sqlite3): emission_factors, entries, targets
 - Emission factors are **approximate**; verify against UBA or DEFRA before real use.
 - **No authentication**; suitable for one small company on a trusted computer.
 - Target progress compares **year-to-date with the whole previous year**, so it looks better early in the year than it is.
-- `better-sqlite3` runs **synchronously** and briefly blocks Node's event loop; fine for one company, not for many concurrent users.
+- The SQLite calls run **synchronously** and briefly block Node's event loop; fine for one company, not for many concurrent users.
 - Importing the same CSV twice creates **duplicate entries**; there is no duplicate check yet.
 - Dashboard charts load Chart.js from a CDN; without internet the numbers still show, but the charts do not.

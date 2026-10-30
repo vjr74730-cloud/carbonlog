@@ -1,15 +1,17 @@
 {
   "name": "nova-carbonlog",
   "version": "1.0.0",
-  "description": "Carbon Pulse landing page with the CarbonLog carbon footprint logger (estimates only)",
+  "description": "Carbon Pulse website with the CarbonLog carbon footprint logger (estimates only)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "seed": "node db/seed.js",
-    "test": "node --test"
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "seed": "node --disable-warning=ExperimentalWarning db/seed.js",
+    "test": "node --disable-warning=ExperimentalWarning --test"
   },
   "dependencies": {
-    "better-sqlite3": "^11.5.0",
     "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=22.13"
   }
 }

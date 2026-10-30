@@ -6,17 +6,17 @@ A multi-page website for **CarbonLog**, the carbon footprint logger for SMEs, wi
 
 | File | What it shows |
 |---|---|
-| `docs/business-case.md` | Users, problem, process, testable requirements R1–R13 with acceptance criteria and the test that proves each, scope decisions, risks |
+| `docs/business-case.md` | Users, problem, process, testable requirements R1–R14 with acceptance criteria and the test that proves each, scope decisions, risks |
 | `docs/wireframes.html` and `docs/wireframes/*.png` | Annotated wireframes of every CarbonLog screen and state (W0–W6), linked to the requirements and API calls |
 | `docs/prompt-log.md` | Selected prompts, why each iteration was needed, decisions, rejected alternatives, and defects found |
 | `git log` | Code history from the rubric review onwards; commit each AI-supported change separately |
 
 ## Run
 
-Requires Node.js 18 or newer.
+Requires **Node.js 22.13 or newer** (tested with 22 and planned for 26). The database is Node's built-in SQLite (`node:sqlite`), so nothing native is compiled during install.
 
 ```bash
-npm install        # express, better-sqlite3
+npm install        # only express
 npm run seed       # optional: creates data/carbonlog.db and loads 6 emission factors
 npm start          # http://localhost:3000
 npm test           # node --test tests/

@@ -161,6 +161,17 @@ What the finished code shows was decided along the way (documented in `README.md
   - Capital **C** and **P** were drawn in the same geometric style as the lowercase wordmark (same stroke, cap height = ascender height).
 - **Iteration after a test:** screenshots showed two info cards overlapping ("A planet with a fever" and "The Alps…"). The overlap already existed in a smaller form; the longer opening made it visible. **Fix:** cards re-spaced and a shorter fade, then checked again.
 
+### C7. App would not start on Node.js 26; fire clouds (30 Oct 2026)
+
+> "Don’t show the sparks of the big bang in some colourful triangles, show some clouds of fire instead . Also I tried running , the previous version was running but this one doesn’t , I have some version issue , go back to previous version . See the code below and change ."
+
+- **Defect (real, on a team member's Mac):** `npm start` failed with `Cannot find module 'better-sqlite3'` on **Node.js 26**. The ZIP does not contain `node_modules`, so `npm install` has to build `better-sqlite3` (a native C++ add-on); newer npm blocks its install script ("not yet covered by allowScripts"). Manual fixes in the terminal (switching to `sqlite3`, rewriting `connection.js`) made it worse: `openDb is not a function`.
+- **Rejected alternative:** going back to an older version, because the old version had the same dependency and would fail the same way on Node 26.
+- **Fix:** use **Node's built-in SQLite** (`node:sqlite`, Node 22.13+) through a 60-line adapter (`db/sqlite.js`) that offers the same `prepare/run/get/all/exec/pragma/transaction` calls. Only `express` is left to install; nothing native is compiled. Routes and tests did not change.
+- **Evidence:** all 34 tests pass; a real start with a database file (`npm run seed`, `npm start`, add an entry, `/api/changes`, `/api/summary`) works.
+- **Second defect found by the tests:** a CSV-import test expected 38 kg, but an earlier test changes the electricity factor; the test now compares with the factor in use.
+- **Visual:** the Big Bang no longer shows coloured triangles or cyan/magenta sparks; billowing fire clouds cool from white-hot to deep red, then fall back and become the galaxy's stars.
+
 ---
 
 ## D. How to add your own prompts
