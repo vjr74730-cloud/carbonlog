@@ -11,13 +11,15 @@ Selected prompts with short notes on **why each iteration was needed**, what was
 
 ## A. Building the CarbonLog app (Node.js, Express, SQLite)
 
-**Honesty note:** the very first prompts that created the app were typed in an earlier chat session. Their exact wording is no longer available in this project's history, so rows A1–A3 are **summaries of what was asked, not quotes**. What came back can be checked directly in the first commit (`83c549c`, "Baseline: CarbonLog app and Carbon Pulse website") and in `README.md`.
+**Honesty note:** these are the first prompts of the build, copied as typed from the original chat. Prompts made between them, if any, are not listed. Each prompt's clean meaning is given in the "Asked" column; the code that came back can be checked in the first commit (`83c549c`, "Baseline: CarbonLog app and Carbon Pulse website") and in `README.md`.
 
-| # | What I asked (summary, not a quote) | What came back | Why the next iteration was needed | Decision |
-|---|---|---|---|---|
-| A1 | Course brief: find a real problem and build a Node.js web app with HTML/CSS and stored data. I chose small companies that cannot easily track their CO₂ emissions. | A plan for "CarbonLog": log activities (electricity, fuel, flights …), convert them to kg CO₂, show totals. | The plan had to become runnable code with a real database. | Express REST API + SQLite; vanilla JS frontend (no framework, to keep the code explainable). |
-| A2 | Build the app from that plan: entries (create, read, update, delete), dashboard, targets, emission factors, CSV export. | Working app: `routes/`, `services/calculator.js`, `db/`, `public/carbonlog.*`, and tests (`npm test`). | Needed protection against wrong or malicious input and a rule for where CO₂ is calculated. | See the decision table below (server-side calculation, stored `co2_kg`, parameterised SQL). |
-| A3 | Add a marketing website around the app (home, pricing, contact, quick calculator). | Carbon Pulse site pages in `public/`. | The first version spoke from the builder's point of view and used one long page → see B2 and B3. | Separate pages written from the customer's point of view. |
+| # | Prompt (as typed) | Asked | What came back / why the next step |
+|---|---|---|---|
+| A1 | "Explain Sme carbon footprint logger" | Explain the idea of a carbon footprint logger for small and medium-sized companies, to decide whether it fits the course project. | An explanation of the problem and the idea. It confirmed the topic and led to A2. |
+| A2 | "Generate a prompt for this project to create the web app and backend ." | Write a complete build prompt for the app and its backend, so the requirements are written down before any code. | A build prompt. Using a written prompt first made the requirements (entries, dashboard, targets, emission factors, CSV export) explicit before coding. |
+| A3 | "Publish the file "/home/claude/scroll3d/index.html" as an artifact using the Artifact tool, then reply with one short line about what was published. …" | Publish the scroll-animation page as a shareable preview. | A preview of the scroll animation page, which let me judge the look before wiring it to the app (see also B1). |
+| A4 | "Create a zip file code for me to run in local host." | Package the project as a zip that runs on my own computer. | A zip with the Node.js app. Running it on localhost is how the later defects were found (C2, C6). |
+| A5 | "in the navbar above, instead of how it works and contact us, create new subpages for EACH of the buttonr ather than the buttons leading to some section of the same home page, and also the buttons muts be: … Also make something similar scroll down transition first without any text on the first animation then scroll down to see the texts" (with a Dribbble link to a 3D hero animation as reference) | Separate pages for navigation and a text-free scroll animation first, with the texts appearing after scrolling. | See B3, where the navigation decisions are recorded. |
 
 What the finished code shows was decided along the way (documented in `README.md`, "Design decisions"). Link each one to the prompt that produced it:
 
@@ -50,7 +52,7 @@ Each entry has the **prompt in clean form** (goal, context, constraints) and, in
 
 ### B3. Separate pages instead of one long page
 **Prompt:** Replace the navbar links "How it works" and "Contact us" with real sub-pages, one per button, instead of links that jump to sections of the home page. Buttons: Contact Us (with my student email), Open CarbonLog, Pricing (tiers: Free for individuals, Pro for small shops, Enterprise for large organisations), and at least two more useful pages of your own idea.
-*As typed: "in the navbar above, instead of how it works and contact us, create new subpages for EACH of the buttonr ather than the buttons leading to some section of the same home page …"*
+*As typed (full text is prompt A5 above): "in the navbar above, instead of how it works and contact us, create new subpages for EACH of the buttonr ather than the buttons leading to some section of the same home page …"*
 - **Why:** anchor links inside one page made navigation unclear.
 - **Decision:** separate pages for Contact, Pricing, Quick Check and Learn, plus "Open CarbonLog". The pricing tiers are a concept only (scope decision in the business case).
 
