@@ -174,32 +174,7 @@ What the finished code shows was decided along the way (documented in `README.md
 
 ---
 
-## D. Setting up the team repository (Nov 2026)
-
-### D1. No Mac available for the push
-
-> "I don't have the Mac right now, so what should I do now?"
-
-- **Situation:** the project had to be on GitHub so teammates and Claude Code could use it, but the code only existed in the AI's workspace and I had no Mac to push from.
-- **Decision:** the code was pushed to the private repository `vjr74730-cloud/carbonlog` from the AI's workspace. Check: `git ls-remote` showed the same commit (`24165fd`) as local `main`. A "packfile" warning appeared during the push, but the remote check proved the push had worked.
-- **Rejected alternative:** uploading the files by hand in the GitHub web page, because it would lose the commit history, which the course asks for as evidence.
-
-### D2. Mac setup (Homebrew and Node)
-
-> "How to install brew npm"
-
-- **Defects met while following the steps:** typing text at the installer's "Press RETURN" prompt aborted the Homebrew install; pasted commands arrived with stray characters (`^[[200~`) and failed with "Permission denied". **Fix:** run the installer again and press Return only; type the short commands by hand. Homebrew and Node then installed and `node -v` showed the new version.
-- **Lesson:** setup instructions from an AI still need to be run and checked on the real machine.
-
-### D3. Evidence for the video
-
-> "How will I show my code contribution to my professor?"
-
-- **Decision:** show Git history (`git log`), this prompt log, and the running app. The AI suggested GitHub as the proof of work because commits show who changed what and when.
-
----
-
-## E. Reproducing the evidence
+## D. Reproducing the evidence
 
 - `npm install && npm test` (calculator, API, CSV import and live-update tests; 34 tests passed on the last run).
 - `git log --format='%h %ad %s' --date=short` lists the commits referred to above.
