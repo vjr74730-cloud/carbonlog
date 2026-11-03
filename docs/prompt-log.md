@@ -160,7 +160,49 @@ Each entry has the **prompt in clean form** (goal, context, constraints) and, in
 
 ---
 
-## D. Reproducing the evidence
+## D. Feature work with Claude Code (3 Nov 2026)
 
-- `npm install && npm test` (calculator, API, CSV import and live-update tests; 34 tests passed on the last run).
+After the build, I connected the GitHub repository (`vjr74730-cloud/carbonlog`) to Claude Code and used four prompts on my own part of the project, the **entries** (create, read, update, delete). The goal was twofold: to be able to explain my code part in the video, and to add one small real feature on its own branch with a pull request. The first two prompts only explain; they change nothing.
+
+### D1. Explain my files (no changes)
+**Prompt:** This repository is CarbonLog (Node.js/Express, node:sqlite, vanilla JS), a CO₂ logger for small companies. My topic is entries. Do not change anything. For `routes/entries.js` and `services/calculator.js`, give me a table with Purpose, Inputs, Flow, Output, Failures and Evidence (which test proves it), in simple English for a video.
+- **Inspect / Run:** the AI ran `tests/api.test.js` and `tests/calculator.test.js` on a separate copy: 26 tests passed. My repo stayed unchanged.
+- **What came back:** one table per file with every route (create, read list, read one, update, delete) and every function of the calculator (`validateEntryInput`, `isValidIsoDate`, `calculateCo2`), each with the test that proves it.
+- **Findings I can use in the video:**
+  - Factor changes do not touch saved entries; only editing an entry recalculates it (test: "updating a factor does NOT change the CO2 of existing entries").
+  - **Gap found:** three failure cases are handled by the code but have no test: a bad `from`/`to` date on the list, a bad id on DELETE, and bad input on PUT. I will not call them "tested".
+  - **Defect found:** the comment at the top of `entries.js` names `public/app.js`, but the real file is `public/carbonlog.js`.
+
+### D2. Trace one click (no changes)
+**Prompt:** Do not change anything. Trace step by step, with file names, function names and line numbers, what happens when I click Add entry, enter 100 kWh electricity with today's date and click Save: from `submitEntry` in `public/carbonlog.js` through `api()`, the POST `/api/entries` route, `prepareRow`, `calculateCo2` and the INSERT, to the table redrawing. Show the JSON sent and returned.
+- **Run:** the AI sent this exact request to a scratch copy of the app with an in-memory database, so the JSON is the server's real reply, not an invented one.
+- **What came back:** the full path with line numbers (`carbonlog.js:229` → `api()` at line 29 → `routes/entries.js:88` → `prepareRow` at line 38 → `validateEntryInput` at `calculator.js:84` → `calculateCo2` at line 40 → `INSERT` at `entries.js:91` → 201 reply → `loadEntries()` at line 153).
+- **Data flow I explain in the video:** the browser sends `amount` as the text `"100"`; the server converts it, checks the unit, multiplies 100 × 0.38 and stores `co2_kg: 38`. The browser never calculates CO₂. Line numbers are from `main` at commit `24165fd`.
+- **Detail to show on camera:** the factors are sorted by name, so the form starts on "Car travel", not Electricity. Choosing Electricity calls `fillUnits` and switches the units to kWh / MWh.
+- **Failure path (same route, different ending):** an amount of `0` returns 400 with `fields`; the message appears under the right field with `aria-invalid`.
+
+### D3. Add a category filter on a branch, with a pull request
+**Prompt:** Create a branch `feature/vignesh-category-filter`. On the Entries tab add a category dropdown above the table, with "All categories" as default and the six categories. Changing it reloads the list using the existing `GET /api/entries?category=...` (the server already supports it). Keep the live 5-second refresh working with the selected filter. Change only `public/carbonlog.html` and `public/carbonlog.js`, match the existing style, use `textContent` only, no new libraries. Commit with a clear message and open a pull request. Explain every change.
+- **What came back:** commit `459d459` on the branch, **pull request #1**. Only the two named files changed (17 lines added, 2 changed); no server code and no CSS.
+- **Decisions:**
+  - The dropdown reuses the markup of the dashboard's From/To filter (`.toolbar` with a `<label>`), so the existing styles apply and screen readers get a label.
+  - `loadEntries()` reads the dropdown's value **every time it loads**. Because the 5-second live refresh already calls `loadEntries(true)`, the filter keeps working in the live refresh without extra code. *Rejected:* a separate refresh path just for the filter.
+  - The six options are built from the factors the page already loads, so the names match the Add entry dialog and cannot drift from the server. *Rejected:* typing the six categories into the HTML.
+  - An empty result now says *No Train travel entries yet. Choose "All categories" to see everything.* instead of "No entries yet", which would be misleading with a filter on.
+- **How it was checked:** `npm test` passed (34 of 34), and in a headless browser against a test database: the dropdown lists All plus the six categories; choosing Electricity sends `/api/entries?category=electricity`; with Electricity selected, an electricity and a flight entry added from outside the page showed only the electricity row after about 5 seconds, with the filter kept; an empty category shows the new message; All brings everything back. No page errors.
+- **Why the branch was cut from `main`:** the session offered its own default branch name; I asked for the named branch so the history shows what each branch is for.
+
+### D4. Test and browser steps
+**Prompt:** Add one test at the end of `tests/api.test.js` (existing `call()` helper): create one electricity and one flight entry, then `GET /api/entries?category=flight` returns only flight entries. Run `npm install` and `npm test` and show me the result. Then list the exact steps to check the dropdown in the browser with `npm start` on http://localhost:3000.
+- **What came back:** the new test, number 14 of 35; all 35 pass (34 before).
+- **Decision:** the test does not expect an exact row count, because earlier tests share the same database. It checks that every returned entry is a flight, that the new flight is included, and that the new electricity entry is not.
+- **Limit to state honestly:** this test checks the server side only, and the server already supported the filter, so it also passes on `main`. The dropdown itself is checked by the browser steps (10 steps, including the live-refresh check).
+- **Defect avoided:** `npm install` created a `package-lock.json`. The repository has never had one, so the AI deleted it instead of adding an unrequested file to the pull request.
+- **Result:** the test was committed as `b72d72e` and is part of pull request #1. The working tree was clean.
+
+---
+
+## E. Reproducing the evidence
+
+- `npm install && npm test` (calculator, API, CSV import and live-update tests; 34 tests pass on `main`; 35 with the category-filter test in pull request #1).
 - `git log --format='%h %ad %s' --date=short` lists the commits referred to above.
