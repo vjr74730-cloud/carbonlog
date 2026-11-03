@@ -1,23 +1,23 @@
-# CarbonLog – Prompt log
+# CarbonLog – Prompt log (Vignesh Sabarinathan)
 
 Selected prompts with short notes on **why each iteration was needed**, what was **decided**, and which **alternatives were rejected**. This follows the course evidence package ("Prompt log: selected prompts with brief notes on why each iteration was needed") and the verified coding loop **Prompt → Inspect → Run → Explain**.
 
-- **AI tool:** Claude (Anthropic), working as a coding agent on the project files. Each team member adds their own prompts, including those made with Codex.
-- **Prompts are quoted word for word** as typed, including typos, so the log stays authentic.
-- Exact dates are given where the chat history records them. Earlier prompts are listed in the order they were made.
+- **Author:** Vignesh Sabarinathan (ESB Business School, Digital Systems 1). Teammates keep their own logs for their own parts.
+- **AI tool:** Claude (Anthropic), working as a coding agent on the project files.
+- **Prompts are quoted word for word** as typed, including typos, so the log stays authentic. Where the exact wording is not available, the entry says "summary" and is not a quote.
+- Exact dates are given where the chat history records them. Prompts are listed in the order they were made.
 
 ---
 
-## A. Building the CarbonLog app (Node.js, Express, SQLite) – TO FILL IN
+## A. Building the CarbonLog app (Node.js, Express, SQLite)
 
-> **Fill this in from your own chat history before submitting.** The first prompts that created the app were made in an earlier session whose full text is no longer available in this project's history. Do not reconstruct them from memory as if they were exact quotes. Paste the real ones, or describe them clearly as summaries.
+**Honesty note:** the very first prompts that created the app were typed in an earlier chat session. Their exact wording is no longer available in this project's history, so rows A1–A3 are **summaries of what was asked, not quotes**. What came back can be checked directly in the first commit (`83c549c`, "Baseline: CarbonLog app and Carbon Pulse website") and in `README.md`.
 
-For each prompt, add one row:
-
-| # | Prompt (exact) | What came back | Why the next iteration was needed | Decision |
+| # | What I asked (summary, not a quote) | What came back | Why the next iteration was needed | Decision |
 |---|---|---|---|---|
-| A1 | *paste* | | | |
-| A2 | *paste* | | | |
+| A1 | Course brief: find a real problem and build a Node.js web app with HTML/CSS and stored data. I chose small companies that cannot easily track their CO₂ emissions. | A plan for "CarbonLog": log activities (electricity, fuel, flights …), convert them to kg CO₂, show totals. | The plan had to become runnable code with a real database. | Express REST API + SQLite; vanilla JS frontend (no framework, to keep the code explainable). |
+| A2 | Build the app from that plan: entries (create, read, update, delete), dashboard, targets, emission factors, CSV export. | Working app: `routes/`, `services/calculator.js`, `db/`, `public/carbonlog.*`, and tests (`npm test`). | Needed protection against wrong or malicious input and a rule for where CO₂ is calculated. | See the decision table below (server-side calculation, stored `co2_kg`, parameterised SQL). |
+| A3 | Add a marketing website around the app (home, pricing, contact, quick calculator). | Carbon Pulse site pages in `public/`. | The first version spoke from the builder's point of view and used one long page → see B2 and B3. | Separate pages written from the customer's point of view. |
 
 What the finished code shows was decided along the way (documented in `README.md`, "Design decisions"). Link each one to the prompt that produced it:
 
@@ -174,13 +174,32 @@ What the finished code shows was decided along the way (documented in `README.md
 
 ---
 
-## D. How to add your own prompts
+## D. Setting up the team repository (Nov 2026)
 
-For every new prompt, add:
+### D1. No Mac available for the push
 
-1. **The exact prompt.**
-2. **What came back** (one line).
-3. **What you checked**: ran it, read the diff, ran `npm test`, looked at the screen.
-4. **Why you iterated**, or why you accepted the result.
-5. **Decision and rejected alternative**, if any.
-6. The **Git commit** that contains the change (see `git log`).
+> "I don't have the Mac right now, so what should I do now?"
+
+- **Situation:** the project had to be on GitHub so teammates and Claude Code could use it, but the code only existed in the AI's workspace and I had no Mac to push from.
+- **Decision:** the code was pushed to the private repository `vjr74730-cloud/carbonlog` from the AI's workspace. Check: `git ls-remote` showed the same commit (`24165fd`) as local `main`. A "packfile" warning appeared during the push, but the remote check proved the push had worked.
+- **Rejected alternative:** uploading the files by hand in the GitHub web page, because it would lose the commit history, which the course asks for as evidence.
+
+### D2. Mac setup (Homebrew and Node)
+
+> "How to install brew npm"
+
+- **Defects met while following the steps:** typing text at the installer's "Press RETURN" prompt aborted the Homebrew install; pasted commands arrived with stray characters (`^[[200~`) and failed with "Permission denied". **Fix:** run the installer again and press Return only; type the short commands by hand. Homebrew and Node then installed and `node -v` showed the new version.
+- **Lesson:** setup instructions from an AI still need to be run and checked on the real machine.
+
+### D3. Evidence for the video
+
+> "How will I show my code contribution to my professor?"
+
+- **Decision:** show Git history (`git log`), this prompt log, and the running app. The AI suggested GitHub as the proof of work because commits show who changed what and when.
+
+---
+
+## E. Reproducing the evidence
+
+- `npm install && npm test` (calculator, API, CSV import and live-update tests; 34 tests passed on the last run).
+- `git log --format='%h %ad %s' --date=short` lists the commits referred to above.
