@@ -93,6 +93,13 @@
 
   /* navigation map */
   .map { background: var(--sheet); border: 2px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; }
+  .pill.live { margin-left: auto; margin-right: 6px; gap: 6px; color: var(--ok); border-color: var(--ok); }
+  .pill.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .site { display: grid; gap: 10px; }
+  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .plans .card.pick { border-width: 3px; }
+  .steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .plans, .steps { grid-template-columns: 1fr; } }
   .map svg { display: block; width: 100%; min-width: 760px; height: auto; }
   @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
 </style>
@@ -102,7 +109,7 @@
 
   <section class="intro">
     <h1>CarbonLog – annotated wireframes</h1>
-    <p>Low-fidelity screens of the CarbonLog app as it is implemented in <code>public/carbonlog.html</code>. Numbers mark controls and states; each note names the requirement from <code>docs/business-case.md</code> (R1–R13) and the API call behind it.</p>
+    <p>Low-fidelity screens of the CarbonLog app as it is implemented in <code>public/carbonlog.html</code>. Numbers mark controls and states; each note names the requirement from <code>docs/business-case.md</code> (R1–R14) and the API call behind it.</p>
     <div class="legend"><span><i class="m">1</i> numbered callout</span><span><span class="req">R4</span> requirement it serves</span><span><span class="banner" style="padding:0 6px">red</span> error state</span></div>
   </section>
 
@@ -145,7 +152,7 @@
       <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
         <div class="page">
           <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span>
-            <div class="tabs anchor"><span class="pill on">Dashboard</span><span class="pill">Entries</span><span class="pill">Settings</span><i class="m">1</i></div></div>
+            <span class="pill live anchor">Live · updated 14:32:05<i class="m">7</i></span><div class="tabs anchor"><span class="pill on">Dashboard</span><span class="pill">Entries</span><span class="pill">Settings</span><i class="m">1</i></div></div>
           <div class="body">
             <div><div class="h">Dashboard</div><div class="muted">Know your footprint in minutes: log activities, see where your emissions come from.</div></div>
             <div class="bar anchor" style="width:max-content;max-width:100%"><label class="field">From<span class="input">01.01.2026</span></label><label class="field">To<span class="input">31.03.2026</span></label><span class="btn">Apply</span><span class="btn">Clear</span><i class="m">2</i></div>
@@ -161,6 +168,7 @@
         <li><i class="m">3</i><div><b>Key figures</b>Total, number of entries, largest source. Numbers come from the server, never computed in the browser. <span class="req">R7</span></div></li>
         <li><i class="m">4</i><div><b>Charts</b>Share by category and a monthly trend (Chart.js). If the charts cannot load, the numbers above still show. <span class="req">R7 R12</span></div></li>
         <li><i class="m">5</i><div><b>Target progress</b>Compared with the previous calendar year; the bar turns orange when the year is above target. <code>GET /api/targets/:year</code> <span class="req">R8</span></div></li>
+        <li><i class="m">7</i><div><b>Live indicator</b>A green dot with the time of the last change. The page checks the server every 5 seconds in the background and refreshes the figures only when something changed. "Offline · retrying" turns it red. <code>GET /api/changes</code> <span class="req">R14</span></div></li>
         <li><i class="m">6</i><div><b>Estimate disclaimer</b>Always visible, so nobody mistakes the figures for a certified report. <span class="req">Scope</span></div></li>
       </ol>
     </div>
@@ -192,10 +200,10 @@
     <div class="row">
       <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/carbonlog.html</span></div>
         <div class="page">
-          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><div class="tabs"><span class="pill">Dashboard</span><span class="pill on">Entries</span><span class="pill">Settings</span></div></div>
+          <div class="apphead"><span class="pill">← Website</span><span class="brand">CarbonLog</span><span class="pill live anchor">Live · updated 14:32:05<i class="m">6</i></span><div class="tabs"><span class="pill">Dashboard</span><span class="pill on">Entries</span><span class="pill">Settings</span></div></div>
           <div class="body">
             <div class="h">Entries</div>
-            <div class="bar"><span class="btn primary anchor">Add entry<i class="m">1</i></span><span class="btn anchor">Export CSV<i class="m">2</i></span><span class="btn anchor">Import CSV<i class="m">5</i></span><span class="muted" style="align-self:center;text-decoration:underline">Download template</span></div>
+            <div class="bar"><label class="field anchor">Category<span class="input">All categories ▾</span><i class="m">7</i></label><span class="btn primary anchor">Add entry<i class="m">1</i></span><span class="btn anchor">Export CSV<i class="m">2</i></span><span class="btn anchor">Import CSV<i class="m">5</i></span><span class="muted" style="align-self:center;text-decoration:underline">Download template</span></div>
             <div class="tbl anchor"><table>
               <thead><tr><th>Date</th><th>Category</th><th class="n">Amount</th><th class="n">CO₂ (kg)</th><th>Note</th><th></th></tr></thead>
               <tbody>
@@ -212,6 +220,8 @@
         <li><i class="m">3</i><div><b>Table</b>CO₂ is the value stored when the entry was saved; changing a factor later does not change it. Edit opens W3 pre-filled; Delete opens W4. <span class="req">R5 R6 R9</span></div></li>
         <li><i class="m">4</i><div><b>Empty state</b>Shown instead of an empty table on first use. <span class="req">R12</span></div></li>
         <li><i class="m">5</i><div><b>Import CSV</b>Opens the file picker; the file text is sent to <code>POST /api/entries/import</code>. "Download template" gives a ready-made file with the right columns. Result: see W2b. <span class="req">R13</span></div></li>
+        <li><i class="m">6</i><div><b>Live indicator</b>Entries added or changed on another device or tab appear here within about 5 seconds, with no reload and never while the dialog is open. <span class="req">R14</span></div></li>
+        <li><i class="m">7</i><div><b>Category filter</b>"All categories" plus the six categories. Choosing one sends <code>GET /api/entries?category=…</code>; the filter stays on during the live refresh. If nothing matches: "No Train travel entries yet. Choose "All categories" to see everything." Built on branch <code>feature/vignesh-category-filter</code> (pull request #1). <span class="req">R6</span></div></li>
       </ol>
     </div>
   </section>
@@ -319,6 +329,75 @@
         </div></div>
       <ol class="notes">
         <li><i class="m">1</i><div><b>Global error banner</b>Used for network failures and server errors (404, 500). The <code>api()</code> helper turns every non-OK response into a readable message. <span class="req">R11 R12</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W7 website -->
+  <section class="wf" id="w7">
+    <header><h2><b>W7</b>Website: Quick Check and Pricing</h2><p>The marketing site around the app. The Quick Check lets a visitor estimate a footprint without logging in; Pricing explains the business model. Both are concept screens: no data is stored, and the plans are not enforced in the app (see scope decisions in the business case).</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/calculator.html</span></div>
+        <div class="page"><div class="body site">
+          <div class="h">How big is your footprint?</div><div class="muted">Move the sliders to match one typical month. Nothing is saved.</div>
+          <div class="two anchor"><div class="card"><div class="k">Electricity · kWh</div><div class="input">slider ——●—— 2,000</div></div><div class="card"><div class="k">Car travel · km</div><div class="input">slider ●———— 600</div></div><i class="m">1</i></div>
+          <div class="bar"><span class="btn anchor">Reset to example<i class="m">2</i></span><span class="btn anchor">Clear all<i class="m">2</i></span></div>
+          <div class="two anchor"><div class="card"><div class="k">Estimated CO₂ per month</div><div class="v">862 kg</div></div><div class="card"><div class="k">Per year</div><div class="v">≈ 10.3 t CO₂</div></div><i class="m">3</i></div>
+          <div class="muted anchor">Table of the emission factors used · estimates, not certified reports<i class="m">4</i></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Sliders</b>One slider per emission source (electricity, natural gas, car, train, flights, purchased goods) for one typical month. The result updates as the visitor moves them; nothing is sent to the server.</div></li>
+        <li><i class="m">2</i><div><b>Reset / Clear</b>Reset restores the example numbers; Clear empties every field.</div></li>
+        <li><i class="m">3</i><div><b>Result</b>Estimated CO₂ per month and the yearly equivalent in tonnes, using the same factors as the app.</div></li>
+        <li><i class="m">4</i><div><b>Factors table</b>The factors behind the estimate are shown, with the note that the figures are estimates.</div></li>
+      </ol>
+    </div>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/pricing.html</span></div>
+        <div class="page"><div class="body site">
+          <div class="h">Plans that grow</div>
+          <div class="bar anchor"><span class="pill on">Monthly</span><span class="pill">Yearly</span><i class="m">1</i></div>
+          <div class="plans anchor"><div class="card"><div class="k">Free</div><div class="v">For individuals</div></div><div class="card pick"><div class="k">Pro</div><div class="v">For small shops</div><span class="btn sm primary">Choose Pro</span></div><div class="card"><div class="k">Enterprise</div><div class="v">For large organisations</div></div><i class="m">2</i></div>
+          <div class="state anchor">What each plan includes · Before you choose<i class="m">3</i></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Billing cycle</b>Monthly or yearly; the choice is carried to the checkout in the address (<code>?cycle=</code>).</div></li>
+        <li><i class="m">2</i><div><b>Three plans</b>Free (individuals), Pro (small shops), Enterprise (large organisations). "Choose Pro" opens the checkout (W8).</div></li>
+        <li><i class="m">3</i><div><b>Details</b>A comparison of what each plan includes and answers to common questions.</div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- W8 checkout -->
+  <section class="wf" id="w8">
+    <header><h2><b>W8</b>Website: Pro checkout and success page</h2><p>A demo of the purchase flow. It shows billing cycle, VAT and payment methods, but no payment is made, and no card data is stored or sent: the success page receives only the last four digits for the receipt.</p></header>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/checkout.html?cycle=yearly</span></div>
+        <div class="page"><div class="body site">
+          <div class="h">Upgrade to Pro</div>
+          <div class="steps">
+            <div class="mini anchor"><div class="card"><div class="k">Billing cycle</div><div class="input">Yearly ▾</div></div><div class="card"><div class="k">Company and billing details</div><div class="input">Work email</div><div class="input">Company, address, country, VAT ID</div></div><i class="m">1</i></div>
+            <div class="mini anchor"><div class="card"><div class="k">Payment method</div><div class="input">Card · IBAN</div><div class="input">Card number · expiry · security code</div><div class="err">Card number is not valid</div></div><i class="m">2</i></div>
+          </div>
+          <div class="card anchor"><div class="k">Order summary</div><div class="muted">Net price + VAT for the chosen country = total</div><span class="btn primary">Pay</span><i class="m">3</i></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Details</b>Billing cycle and company data. The VAT rate follows the country, and a VAT ID changes the VAT line for business customers.</div></li>
+        <li><i class="m">2</i><div><b>Payment</b>Card or bank (IBAN). Each field is checked in the browser (card number checksum, IBAN check); the message sits under the field.</div></li>
+        <li><i class="m">3</i><div><b>Pay</b>Whichever method is chosen, the visitor lands on the success page.</div></li>
+      </ol>
+    </div>
+    <div class="row">
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">localhost:3000/payment-success.html</span></div>
+        <div class="page"><div class="body site">
+          <div class="h">Welcome to CarbonLog Pro</div>
+          <div class="card anchor"><div class="k">Receipt</div><div class="muted">Plan, billing cycle, total, payment method (last four digits only)</div><i class="m">1</i></div>
+          <div class="state anchor">What happens next<i class="m">2</i></div>
+          <div class="bar"><span class="btn primary">Open CarbonLog</span></div>
+        </div></div></div>
+      <ol class="notes">
+        <li><i class="m">1</i><div><b>Receipt</b>Built from the order held in the browser session for this visit. No card data is passed on.</div></li>
+        <li><i class="m">2</i><div><b>Next steps</b>A short list of what to do next, with a button into the app.</div></li>
       </ol>
     </div>
   </section>

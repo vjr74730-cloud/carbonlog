@@ -68,7 +68,7 @@ Each requirement is testable. The last column shows the automated test that prov
 | R11 | Robust API | Malformed JSON and unknown IDs give clean 400 / 404 errors; SQL injection attempts are stored as plain text | `api.test.js` › malformed JSON and bad ids; SQL injection |
 | R12 | Clear system feedback | Loading, empty ("No entries yet…"), and "server not reachable" states are shown instead of a blank page | Shown in the demo (see wireframes W1b and W6) |
 | R13 | Import entries from a CSV file | A file with a header row (`category,amount,unit,entry_date,note`) imports all rows (HTTP 201). If any row is invalid, **nothing** is imported and each bad row is listed with its error. Our own export, semicolon files from German Excel (`1.500,5`, `15.03.2026`) and German column names are accepted | `csv-import.test.js` (7 tests); `api.test.js` › CSV import (4 tests) |
-| R14 | Live updates across devices | A change made in one browser, device or server instance appears in every other open CarbonLog within about 5 seconds, without reloading; a "Live" indicator shows the connection, and open forms are never overwritten | `live-revision.test.js`; `api.test.js` › GET /api/changes; shown in the demo with two windows |
+| R14 | Live updates across devices | A change made in one browser, device or server instance appears in every other open CarbonLog within about 5 seconds, without reloading; a "Live" indicator shows the connection, and open forms are never overwritten | `live-revision.test.js`; `api.test.js` › GET /api/changes; shown in the demo with two windows; wireframes W1 and W2 (Live indicator) |
 
 ## 6. Scope decisions
 
