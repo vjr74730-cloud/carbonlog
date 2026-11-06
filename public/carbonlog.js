@@ -153,14 +153,19 @@ function drawTarget(t) {
 async function loadEntries(quiet = false) {
   const stateBox = $('#entries-state');
   const table = $('#entries-table');
+  // The selected category is read on every load, so the live refresh keeps the filter too.
+  const category = $('#entries-category').value;
+  const query = category ? `?${new URLSearchParams({ category })}` : '';
   if (!quiet) { stateBox.textContent = 'Loading…'; table.hidden = true; }
   try {
-    const rows = await api('/api/entries');
+    const rows = await api(`/api/entries${query}`);
     const body = table.querySelector('tbody');
     body.replaceChildren();
     if (rows.length === 0) {
       table.hidden = true;
-      stateBox.textContent = 'No entries yet. Click "Add entry" to log your first activity.';
+      stateBox.textContent = category
+        ? `No ${labelOf(category)} entries yet. Choose "All categories" to see everything.`
+        : 'No entries yet. Click "Add entry" to log your first activity.';
       return;
     }
     stateBox.textContent = '';
@@ -416,9 +421,12 @@ async function init() {
   $('#entry-form').addEventListener('submit', submitEntry);
   $('#f-category').addEventListener('change', (e) => fillUnits(e.target.value, null));
   $('#target-form').addEventListener('submit', saveTarget);
+  $('#entries-category').addEventListener('change', () => loadEntries());
 
   try {
     state.factors = await api('/api/factors');
+    // One option per category from the server (the same list as the entry dialog), after "All categories".
+    $('#entries-category').append(...state.factors.map((f) => el('option', { value: f.category }, labelOf(f.category))));
   } catch (err) {
     showGlobalError(`Could not reach the CarbonLog server (${err.message}). Start it with "npm start" and open http://localhost:3000.`);
   }

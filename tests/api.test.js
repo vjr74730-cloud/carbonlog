@@ -212,3 +212,18 @@ test('GET /api/changes: the revision rises on every write and is never cached', 
   const r3 = await call('GET', '/api/changes');
   assert.equal(r3.json.revision, r2.json.revision, 'reading does not change it');
 });
+
+// ---------- category filter (Entries tab dropdown) ----------
+test('GET /api/entries?category=flight returns only flight entries', async () => {
+  const power = await call('POST', '/api/entries', { ...valid, entry_date: '2025-08-01' });
+  const trip = await call('POST', '/api/entries', { ...valid, category: 'flight', amount: 500, unit: 'km', entry_date: '2025-08-02' });
+  assert.equal(power.status, 201);
+  assert.equal(trip.status, 201);
+
+  const r = await call('GET', '/api/entries?category=flight');
+  assert.equal(r.status, 200);
+  assert.ok(r.json.length > 0, 'at least the new flight entry');
+  assert.ok(r.json.every((e) => e.category === 'flight'), 'no other category is returned');
+  assert.ok(r.json.some((e) => e.id === trip.json.id), 'the new flight entry is included');
+  assert.ok(!r.json.some((e) => e.id === power.json.id), 'the electricity entry is left out');
+});
