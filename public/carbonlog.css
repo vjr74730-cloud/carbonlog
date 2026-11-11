@@ -143,3 +143,4 @@ label.btn { cursor: pointer; }
 .live[data-status="offline"] i { background: var(--danger); }
 @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(42, 157, 75, .5); } 70% { box-shadow: 0 0 0 7px rgba(42, 157, 75, 0); } 100% { box-shadow: 0 0 0 0 rgba(42, 157, 75, 0); } }
 @media (prefers-reduced-motion: reduce) { .live[data-status="live"] i { animation: none; } }
+.entries-count { margin: 0 0 8px; color: var(--muted, inherit); font-size: .9rem; }
