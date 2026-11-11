@@ -227,3 +227,10 @@ test('GET /api/entries?category=flight returns only flight entries', async () =>
   assert.ok(r.json.some((e) => e.id === trip.json.id), 'the new flight entry is included');
   assert.ok(!r.json.some((e) => e.id === power.json.id), 'the electricity entry is left out');
 });
+
+// ---------- health check ----------
+test('GET /api/health returns { status: "ok" }', async () => {
+  const r = await call('GET', '/api/health');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json, { status: 'ok' });
+});
