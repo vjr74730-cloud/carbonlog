@@ -161,6 +161,7 @@ async function loadEntries(quiet = false) {
     const rows = await api(`/api/entries${query}`);
     const body = table.querySelector('tbody');
     body.replaceChildren();
+    $('#entries-count').textContent = `Showing ${rows.length} entries`;
     if (rows.length === 0) {
       table.hidden = true;
       stateBox.textContent = category
