@@ -99,6 +99,7 @@
             <div class="stage" aria-hidden="true"><div class="cube" id="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
             <p id="cubetext"></p>
           </div>
+          <button type="button" class="btn" id="copy-result">Copy result</button>
           <a class="btn primary" href="carbonlog.html">Track it every month in CarbonLog</a>
         </aside>
       </div>
@@ -212,6 +213,45 @@
           ? `As a gas at 25 °C, one year of these emissions would fill a cube about ${fmt(side)} m wide. That equals driving about ${fmt(total * 12 / .17)} km in an average car.`
           : 'Your yearly CO₂ cube appears here.';
       }
+      // ---------- copy the estimate as plain text ----------
+      const copyBtn = document.getElementById('copy-result');
+      function resultText() {
+        const lines = [
+          'CarbonLog Quick Check estimate',
+          `Per month: ${document.getElementById('total').textContent}`,
+          document.getElementById('year').textContent,
+        ];
+        for (const row of document.querySelectorAll('#bars .bar-row')) {
+          lines.push(`- ${row.querySelector('.lb').textContent}: ${row.querySelector('.vl').textContent}`);
+        }
+        lines.push('Approximate factors, not a certified emission report.');
+        return lines.join('\n');
+      }
+      function flash(msg) {
+        copyBtn.textContent = msg;
+        clearTimeout(copyBtn._t);
+        copyBtn._t = setTimeout(() => { copyBtn.textContent = 'Copy result'; }, 1800);
+      }
+      // Fallback when the Clipboard API is missing or refused: select the text so the visitor can press Ctrl/Cmd+C.
+      function selectFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.readOnly = true;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+        ta.remove();
+        return ok;
+      }
+      copyBtn.addEventListener('click', () => {
+        const text = resultText();
+        const fail = () => flash(selectFallback(text) ? 'Copied' : 'Copy not available');
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.writeText) { fail(); return; }
+          navigator.clipboard.writeText(text).then(() => flash('Copied'), fail);
+        } catch (err) { fail(); }
+      });
+
       setAll((it) => it.ex);
       render();
     })();
