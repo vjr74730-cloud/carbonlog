@@ -13,6 +13,7 @@ function createApp(db) {
   app.use('/api/factors', require('./routes/factors')(db));
   app.use('/api/targets', require('./routes/targets')(db));
   app.use('/api/changes', require('./routes/changes')(db)); // live updates (revision number)
+  app.use('/api/health', require('./routes/health')()); // health check ({ status: "ok" })
   app.use('/api', require('./routes/reports')(db)); // /api/summary and /api/export.csv
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
