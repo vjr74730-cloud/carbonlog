@@ -21,6 +21,12 @@ function el(tag, attrs = {}, ...children) {
 
 const nf = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
 const labelOf = (category) => category.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+// Average CO2 per entry, derived only from the totals the server already returned.
+// Shows "–" when there are no entries, so the card never displays NaN or Infinity.
+function averagePerEntryText(totalKg, count) {
+  if (!count || !Number.isFinite(totalKg)) return '–';
+  return `${nf.format(totalKg / count)} kg CO₂`;
+}
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -83,6 +89,7 @@ async function loadDashboard(quiet = false) {
     ]);
     if (summary.entry_count === 0) {
       content.hidden = true;
+      $('#stat-avg').textContent = averagePerEntryText(0, 0);
       stateBox.textContent = 'No entries in this period yet. Add your first activity on the Entries tab.';
       return;
     }
@@ -90,6 +97,7 @@ async function loadDashboard(quiet = false) {
     content.hidden = false;
     $('#stat-total').textContent = `${nf.format(summary.total_co2_kg)} kg CO₂`;
     $('#stat-count').textContent = String(summary.entry_count);
+    $('#stat-avg').textContent = averagePerEntryText(summary.total_co2_kg, summary.entry_count);
     $('#stat-top').textContent = labelOf(summary.by_category[0].category);
     drawCharts(summary);
     drawTarget(target);
